@@ -124,7 +124,7 @@ const TEXT_PARSE_TOOL: Anthropic.Tool = {
 async function callSonnet(text: string): Promise<any> {
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   const message = await client.messages.create({
-    model: "claude-sonnet-4-5-20250929", max_tokens: 1024,
+    model: "claude-sonnet-4-5-20250929", max_tokens: 1024, temperature: 0,
     tools: [TEXT_PARSE_TOOL], tool_choice: { type: "tool", name: "extract_expense" },
     messages: [{ role: "user", content: buildProdPrompt(text) }],
   });
