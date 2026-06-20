@@ -9,6 +9,10 @@ Your job is to extract structured expense information from a user's natural lang
 - Category must be chosen strictly from the provided category list. Do not invent categories.
 - If multiple categories match equally, set categoryId to null.
 - For description: use a brief summary of the expense. If nothing is extractable, use the raw input as-is.
+- payerName is the person who PAID for the expense, and must only be set if a person's name is
+  explicitly mentioned in the <input> text as having paid. submittedBy (in <context>) is the person
+  sending this message — it is NOT the payer unless the input text explicitly says so. Do NOT default
+  payerName to submittedBy. If no payer is explicitly named in the input text, set payerName to null.
 </rules>
 
 <relative_date_handling>
@@ -19,13 +23,21 @@ Resolve relative date expressions using the requestDate value provided.
 - "이번 주 월요일" → most recent Monday on or before requestDate
 - Specific dates like "5/12", "5월 12일" → same year as requestDate
 - Any other relative expression → null (do not guess)
+
+The following expressions are NOT in the resolvable list above and MUST resolve to date: null.
+Do NOT attempt to calculate or guess a specific date for these — treat them exactly like "no date mentioned":
+- "저번 주 화요일" → null (do not compute which Tuesday — this phrase is not resolvable)
+- "지난주에" → null
+- "저번달" / "지난달에" → null
+- "최근에" → null
+- "며칠 전" → null
+- input text with no date expression at all → null
 </relative_date_handling>
 
 <context>
 requestDate: {{requestDate}}
 timezone: {{timezone}}
-submittedBy: {{submittedBy.displayName}} (userId: {{submittedBy.userId}})
-
+submittedBy: {{submittedBy.displayName}} (userId: {{submittedBy.userId}}) — message sender, NOT automatically the payer
 Available categories:
 {{categories}}
 </context>
