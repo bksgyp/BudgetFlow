@@ -4,7 +4,7 @@
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
 
 const client = new S3Client({
-  region: process.env.AWS_REGION ?? "ap-northeast-2",
+  region: process.env.AWS_REGION_S3 ?? "ap-northeast-2",
 });
 
 export interface S3ImageResult {

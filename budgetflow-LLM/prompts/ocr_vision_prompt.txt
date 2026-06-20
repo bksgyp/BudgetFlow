@@ -4,54 +4,15 @@ You will be shown an image of a receipt. Extract structured expense data directl
 <rules>
 - Read the receipt image carefully. Extract date, merchant name, total amount, and line items.
 - Do NOT guess or invent values that are not visible or legible in the image.
-- If a value cannot be determined with confidence, return null for that field.
-- Return ONLY a valid JSON object. No explanation, no markdown, no code fences.
+- If a value cannot be determined with confidence, set it to null.
 - All monetary amounts must be integers in Korean Won (KRW). No decimals, no negative values. Remove commas and currency symbols.
 - Category must be chosen strictly from the provided category list. Do not invent categories.
-- If multiple categories match equally, return null for categoryId.
+- If multiple categories match equally, or no category is a clear match, set categoryId to null.
 - For items[]: only include items that have both a name and a valid amount. Omit unclear or duplicate rows.
-- If the image is not a receipt, is unreadable, or contains no usable text, return null for all extractable fields and set every confidence flag to false.
+- If the image is not a receipt, is unreadable, or contains no usable text, set all fields to null and all confidence flags to false.
+- For description: "{merchant} 영수증" if merchant exists, "영수증 {date}" if only date exists, "영수증" if both null.
+- For rawText: transcribe all readable text from the receipt line by line.
 </rules>
-
-<output_format>
-Return exactly this JSON structure:
-{
-  "date": "YYYY-MM-DD or null",
-  "merchant": "string or null",
-  "amount": integer or null,
-  "description": "string",
-  "categoryId": "string or null",
-  "items": [
-    {
-      "name": "string",
-      "quantity": integer or null,
-      "unitPrice": integer or null,
-      "amount": integer
-    }
-  ],
-  "confidence": {
-    "date": true or false,
-    "merchant": true or false,
-    "amount": true or false,
-    "items": true or false,
-    "category": true or false
-  },
-  "rawText": "all readable text from the receipt, line by line, joined with \n"
-}
-
-Rules for each field:
-- date: YYYY-MM-DD format, based on the date printed on the receipt. null if not visible.
-- merchant: store or vendor name as printed. null if not visible.
-- amount: total payment amount as integer (look for 합계, 총액, 결제금액, TOTAL). null if not found.
-- description: auto-generate using this rule:
-    - merchant exists → "{merchant} 영수증"
-    - merchant is null, date exists → "영수증 {date}"
-    - both null → "영수증"
-- categoryId: must match one of the provided category IDs exactly. Classify based on merchant name and item names.
-- items: line items visible on the receipt. Empty array if none are legible.
-- confidence: true for each field that was successfully read from the image, false otherwise.
-- rawText: best-effort transcription of all visible text on the receipt, used for record-keeping. Empty string if completely unreadable.
-</output_format>
 
 <context>
 Available categories:
