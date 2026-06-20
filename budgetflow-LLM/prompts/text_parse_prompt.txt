@@ -9,6 +9,10 @@ Your job is to extract structured expense information from a user's natural lang
 - Category must be chosen strictly from the provided category list. Do not invent categories.
 - If multiple categories match equally, set categoryId to null.
 - For description: use a brief summary of the expense. If nothing is extractable, use the raw input as-is.
+- payerName is the person who PAID for the expense, and must only be set if a person's name is
+  explicitly mentioned in the <input> text as having paid. submittedBy (in <context>) is the person
+  sending this message — it is NOT the payer unless the input text explicitly says so. Do NOT default
+  payerName to submittedBy. If no payer is explicitly named in the input text, set payerName to null.
 </rules>
 
 <relative_date_handling>
@@ -24,8 +28,7 @@ Resolve relative date expressions using the requestDate value provided.
 <context>
 requestDate: {{requestDate}}
 timezone: {{timezone}}
-submittedBy: {{submittedBy.displayName}} (userId: {{submittedBy.userId}})
-
+submittedBy: {{submittedBy.displayName}} (userId: {{submittedBy.userId}}) — message sender, NOT automatically the payer
 Available categories:
 {{categories}}
 </context>
