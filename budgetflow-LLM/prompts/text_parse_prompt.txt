@@ -23,6 +23,15 @@ Resolve relative date expressions using the requestDate value provided.
 - "이번 주 월요일" → most recent Monday on or before requestDate
 - Specific dates like "5/12", "5월 12일" → same year as requestDate
 - Any other relative expression → null (do not guess)
+
+The following expressions are NOT in the resolvable list above and MUST resolve to date: null.
+Do NOT attempt to calculate or guess a specific date for these — treat them exactly like "no date mentioned":
+- "저번 주 화요일" → null (do not compute which Tuesday — this phrase is not resolvable)
+- "지난주에" → null
+- "저번달" / "지난달에" → null
+- "최근에" → null
+- "며칠 전" → null
+- input text with no date expression at all → null
 </relative_date_handling>
 
 <context>
