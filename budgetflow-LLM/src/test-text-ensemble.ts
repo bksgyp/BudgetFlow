@@ -1,9 +1,5 @@
-// BudgetFlow 텍스트 파싱 배치 테스트 — 멀티모델 벤치마킹 (수정판)
-// 기존 버전은 Haiku/Sonnet 호출 시 Express 서버를 거쳐 모델이 고정되는 버그가 있었고,
-// 프롬프트도 구버전("Return ONLY JSON")을 스크립트에 하드코딩해서 썼음.
-// → 실제 프로덕션 프롬프트(text_parse_prompt.txt) + Tool Use(Claude) / JSON 모드(Gemini)로 수정.
-//
-// 실행: npx tsx src/test-text-batch.ts  (모든 모델 순차 실행, 4종 다 한 번에 비교)
+// BudgetFlow 텍스트 파싱 앙상블 테스트 — Haiku + Sonnet + Gemini 투표
+// test-text-batch.ts(수정판)와 동일한 프로덕션 프롬프트/직접 API 호출 재사용
 
 import * as XLSX from "xlsx";
 import Anthropic from "@anthropic-ai/sdk";
@@ -39,7 +35,6 @@ const TEST_CASES = [
   { id: "TC-12", input: "행사 홍보물 제작비 1,250,000원", expected: { date: null, amount: 1250000, merchant: null, categoryId: null, payerName: null } },
 ];
 
-// 실제 프로덕션 프롬프트 파일을 그대로 읽어서 사용
 const TEXT_PROMPT_TEMPLATE = fs.readFileSync(path.resolve(__dirname, "../prompts/text_parse_prompt.txt"), "utf-8");
 function buildProdPrompt(text: string): string {
   return TEXT_PROMPT_TEMPLATE
@@ -51,35 +46,27 @@ function buildProdPrompt(text: string): string {
     .replaceAll("{{text}}", text);
 }
 
-// Gemini/DeepSeek은 Tool Use가 없어서 출력 형식 안내를 별도로 덧붙임 (Claude는 Tool Use로 강제)
 const JSON_SUFFIX = `
 
 Return ONLY this JSON (no markdown, no explanation):
 {"date":"YYYY-MM-DD or null","amount":integer or null,"merchant":"string or null","description":"string","categoryId":"string or null","payerName":"string or null","confidence":{"date":boolean,"amount":boolean,"category":boolean,"payerName":boolean}}`;
 
-// bedrockClient.ts의 TEXT_PARSE_TOOL과 동일한 스키마
 const TEXT_PARSE_TOOL: Anthropic.Tool = {
   name: "extract_expense",
   description: "Extract structured expense data from Korean natural language input.",
   input_schema: {
     type: "object" as const,
     properties: {
-      date:        { type: ["string", "null"], description: "YYYY-MM-DD format. null if cannot be determined." },
-      amount:      { type: ["integer", "null"], description: "Integer amount in KRW. null if cannot be determined." },
-      merchant:    { type: ["string", "null"], description: "Store or vendor name. null if not mentioned." },
-      description: { type: "string", description: "Brief summary of the expense." },
-      categoryId:  { type: ["string", "null"], description: "Must match one of the provided category IDs exactly. null if no match." },
-      payerName:   { type: ["string", "null"], description: "Person who paid. null if not mentioned." },
+      date:        { type: ["string", "null"] }, amount: { type: ["integer", "null"] },
+      merchant:    { type: ["string", "null"] }, description: { type: "string" },
+      categoryId:  { type: ["string", "null"] }, payerName: { type: ["string", "null"] },
       confidence: {
         type: "object",
-        properties: {
-          date: { type: "boolean" }, amount: { type: "boolean" },
-          category: { type: "boolean" }, payerName: { type: "boolean" },
-        },
-        required: ["date", "amount", "category", "payerName"],
+        properties: { date:{type:"boolean"}, amount:{type:"boolean"}, category:{type:"boolean"}, payerName:{type:"boolean"} },
+        required: ["date","amount","category","payerName"],
       },
     },
-    required: ["date", "amount", "merchant", "description", "categoryId", "payerName", "confidence"],
+    required: ["date","amount","merchant","description","categoryId","payerName","confidence"],
   },
 };
 
@@ -87,8 +74,7 @@ async function callClaudeDirect(model: string, text: string): Promise<any> {
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   const message = await client.messages.create({
     model, max_tokens: 1024,
-    tools: [TEXT_PARSE_TOOL],
-    tool_choice: { type: "tool", name: "extract_expense" },
+    tools: [TEXT_PARSE_TOOL], tool_choice: { type: "tool", name: "extract_expense" },
     messages: [{ role: "user", content: buildProdPrompt(text) }],
   });
   const toolUse = message.content.find(b => b.type === "tool_use") as Anthropic.ToolUseBlock | undefined;
@@ -126,30 +112,17 @@ async function callGeminiDirect(text: string): Promise<any> {
   });
 }
 
-async function callDeepSeekDirect(text: string): Promise<any> {
-  const apiKey = process.env.DEEPSEEK_API_KEY;
-  if (!apiKey) throw new Error("DEEPSEEK_API_KEY 없음");
-  const body = JSON.stringify({
-    model: "deepseek-chat", max_tokens: 1024, temperature: 0,
-    messages: [{ role: "user", content: buildProdPrompt(text) + JSON_SUFFIX }],
-  });
-  return new Promise((resolve, reject) => {
-    const req = https.request("https://api.deepseek.com/v1/chat/completions", {
-      method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
-    }, (res) => {
-      let data = "";
-      res.on("data", c => data += c);
-      res.on("end", () => {
-        try {
-          const json = JSON.parse(data);
-          if (json.error) throw new Error(json.error.message);
-          resolve(parseJsonSafe(json.choices?.[0]?.message?.content ?? ""));
-        } catch(e) { reject(e); }
-      });
-      res.on("error", reject);
-    });
-    req.on("error", reject); req.write(body); req.end();
-  });
+function vote(a: any, b: any, c: any): { value: any; agreement: number } {
+  const vals = [a, b, c];
+  const counts = new Map<string, { value: any; count: number }>();
+  for (const v of vals) {
+    const key = JSON.stringify(v);
+    if (!counts.has(key)) counts.set(key, { value: v, count: 0 });
+    counts.get(key)!.count++;
+  }
+  let best = { value: null as any, count: 0 };
+  for (const e of counts.values()) if (e.count > best.count) best = e;
+  return { value: best.count >= 2 ? best.value : null, agreement: best.count };
 }
 
 function isMatch(actual: any, expected: any): boolean {
@@ -157,66 +130,61 @@ function isMatch(actual: any, expected: any): boolean {
   return actual === expected;
 }
 
-async function runModel(label: string, callFn: (text: string) => Promise<any>) {
-  console.log(`\n--- ${label} ---`);
+async function main() {
+  console.log("\n[텍스트 앙상블] Haiku + Sonnet + Gemini 투표, 12개 케이스\n");
   const rows: any[] = [];
+
   for (const tc of TEST_CASES) {
     process.stdout.write(`[${tc.id}] `);
-    const row: any = { 케이스: tc.id, 입력: tc.input, 상태: "success", 오류: "" };
+    const row: any = { 케이스: tc.id, 입력: tc.input };
     try {
-      const t0 = Date.now();
-      const r = await callFn(tc.input);
-      row.응답시간ms = Date.now() - t0;
-      row.날짜_예상 = String(tc.expected.date); row.날짜_실제 = String(r.date ?? null); row.날짜_일치 = isMatch(r.date ?? null, tc.expected.date) ? "Y" : "N";
-      row.금액_예상 = String(tc.expected.amount); row.금액_실제 = String(r.amount ?? null); row.금액_일치 = isMatch(r.amount ?? null, tc.expected.amount) ? "Y" : "N";
-      row.상호명_예상 = String(tc.expected.merchant); row.상호명_실제 = String(r.merchant ?? null); row.상호명_일치 = isMatch(r.merchant ?? null, tc.expected.merchant) ? "Y" : "N";
-      row.카테고리_예상 = String(tc.expected.categoryId); row.카테고리_실제 = String(r.categoryId ?? null); row.카테고리_일치 = isMatch(r.categoryId ?? null, tc.expected.categoryId) ? "Y" : "N";
-      row.결제자_예상 = String(tc.expected.payerName); row.결제자_실제 = String(r.payerName ?? null); row.결제자_일치 = isMatch(r.payerName ?? null, tc.expected.payerName) ? "Y" : "N";
-      const allMatch = [row.날짜_일치, row.금액_일치, row.상호명_일치, row.카테고리_일치, row.결제자_일치].every(v => v === "Y");
-      row.전체일치 = allMatch ? "Y" : "N";
-      console.log(`${allMatch ? "✅" : "⚠️"} ${row.응답시간ms}ms`);
+      const [h, s, g] = await Promise.allSettled([
+        callClaudeDirect("claude-haiku-4-5-20251001", tc.input),
+        callClaudeDirect("claude-sonnet-4-5-20250929", tc.input),
+        callGeminiDirect(tc.input),
+      ]);
+      const haiku  = h.status === "fulfilled" ? h.value : null;
+      const sonnet = s.status === "fulfilled" ? s.value : null;
+      const gemini = g.status === "fulfilled" ? g.value : null;
+
+      const vd = vote(haiku?.date ?? null, sonnet?.date ?? null, gemini?.date ?? null);
+      const va = vote(haiku?.amount ?? null, sonnet?.amount ?? null, gemini?.amount ?? null);
+      const vm = vote(haiku?.merchant ?? null, sonnet?.merchant ?? null, gemini?.merchant ?? null);
+      const vc = vote(haiku?.categoryId ?? null, sonnet?.categoryId ?? null, gemini?.categoryId ?? null);
+      const vp = vote(haiku?.payerName ?? null, sonnet?.payerName ?? null, gemini?.payerName ?? null);
+
+      row.날짜_앙상블 = String(vd.value); row.날짜_일치도 = vd.agreement; row.날짜_정답 = isMatch(vd.value, tc.expected.date) ? "Y" : "N";
+      row.금액_앙상블 = String(va.value); row.금액_일치도 = va.agreement; row.금액_정답 = isMatch(va.value, tc.expected.amount) ? "Y" : "N";
+      row.상호명_앙상블 = String(vm.value); row.상호명_일치도 = vm.agreement; row.상호명_정답 = isMatch(vm.value, tc.expected.merchant) ? "Y" : "N";
+      row.카테고리_앙상블 = String(vc.value); row.카테고리_일치도 = vc.agreement; row.카테고리_정답 = isMatch(vc.value, tc.expected.categoryId) ? "Y" : "N";
+      row.결제자_앙상블 = String(vp.value); row.결제자_일치도 = vp.agreement; row.결제자_정답 = isMatch(vp.value, tc.expected.payerName) ? "Y" : "N";
+      row.전체일치 = [row.날짜_정답, row.금액_정답, row.상호명_정답, row.카테고리_정답, row.결제자_정답].every(v=>v==="Y") ? "Y" : "N";
+
+      console.log(`${row.전체일치==="Y"?"✅":"⚠️"} 날짜=${row.날짜_앙상블}(${vd.agreement}) 금액=${row.금액_앙상블}(${va.agreement})`);
     } catch(e: any) {
-      row.상태 = "error"; row.오류 = e.message; row.전체일치 = "N";
+      row.전체일치 = "N"; row.오류 = e.message;
       console.log(`❌ ${e.message}`);
     }
     rows.push(row);
     await new Promise(r => setTimeout(r, 800));
   }
-  const ok = rows.filter(r => r.상태 === "success");
-  const pct = (field: string) => ok.length ? `${((ok.filter(r=>r[field]==="Y").length/ok.length)*100).toFixed(1)}%` : "N/A";
+
+  const pct = (field: string) => `${((rows.filter(r=>r[field]==="Y").length/rows.length)*100).toFixed(1)}%`;
   const summary = {
-    모델: label, 총케이스: TEST_CASES.length, 성공: ok.length,
-    전체정확도: pct("전체일치"), 날짜정확도: pct("날짜_일치"), 금액정확도: pct("금액_일치"),
-    상호명정확도: pct("상호명_일치"), 카테고리정확도: pct("카테고리_일치"), 결제자정확도: pct("결제자_일치"),
-    평균응답시간: ok.length ? `${Math.round(ok.reduce((s,r)=>s+r.응답시간ms,0)/ok.length)}ms` : "N/A",
+    전체정확도: pct("전체일치"), 날짜정확도: pct("날짜_정답"), 금액정확도: pct("금액_정답"),
+    상호명정확도: pct("상호명_정답"), 카테고리정확도: pct("카테고리_정답"), 결제자정확도: pct("결제자_정답"),
   };
-  console.log(JSON.stringify(summary));
-  return { rows, summary };
-}
-
-async function main() {
-  const results: any[] = [];
-  results.push(await runModel("haiku",    (t) => callClaudeDirect("claude-haiku-4-5-20251001", t)));
-  results.push(await runModel("sonnet",   (t) => callClaudeDirect("claude-sonnet-4-5-20250929", t)));
-  results.push(await runModel("gemini",   callGeminiDirect));
-  results.push(await runModel("deepseek", callDeepSeekDirect));
-
-  console.log("\n========== 4개 모델 비교 요약 ==========");
-  results.forEach(r => console.log(JSON.stringify(r.summary)));
+  console.log("\n========== 텍스트 앙상블 요약 ==========");
+  console.log(JSON.stringify(summary, null, 2));
   console.log("==========================================");
 
   const wb = XLSX.utils.book_new();
-  results.forEach(r => {
-    const ws = XLSX.utils.json_to_sheet(r.rows);
-    ws["!cols"] = Object.keys(r.rows[0]||{}).map(k=>({wch:Math.max(k.length,12)}));
-    XLSX.utils.book_append_sheet(wb, ws, r.summary.모델);
-  });
-  const summaryWs = XLSX.utils.json_to_sheet(results.map(r => r.summary));
-  XLSX.utils.book_append_sheet(wb, summaryWs, "요약비교");
+  const ws = XLSX.utils.json_to_sheet(rows);
+  XLSX.utils.book_append_sheet(wb, ws, "상세결과");
   const ts = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
-  const filename = `text_results_corrected_${ts}.xlsx`;
+  const filename = `text_ensemble_results_${ts}.xlsx`;
   XLSX.writeFile(wb, filename);
-  console.log(`\n📊 엑셀 저장: ${filename}`);
+  console.log(`📊 엑셀 저장: ${filename}`);
 }
 
 main().catch(console.error);

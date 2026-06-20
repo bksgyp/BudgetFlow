@@ -1,11 +1,19 @@
 // BudgetFlow LLM Service - Anthropic API 클라이언트
-// Structured Output(Tool Use) 방식으로 전환
+// Structured Output(Tool Use) 방식
+//
+// 모델 선정 (2026-06-20, 100개 골든셋 OCR + 12개 텍스트 케이스 + 앙상블 검증 기반):
+// - 텍스트 파싱: Sonnet 채택 — 전체정확도 83.3% (Haiku/Gemini 50.0%). 앙상블은 33.3%로 오히려
+//   하락(약한 모델 2곳이 우연히 같은 오답에 투표해 정답인 Sonnet을 다수결로 누름) → 미채택.
+// - OCR(영수증 이미지): Haiku 채택 — 정확도 1위 + 최저비용 + 최速(Sonnet의 절반).
+//   앙상블도 효과 없음(0/30 보정 사례) → 미채택.
 
 import Anthropic from "@anthropic-ai/sdk";
 
 const MODEL_HAIKU  = "claude-haiku-4-5-20251001";
 const MODEL_SONNET = "claude-sonnet-4-5-20250929";
-const MODEL_ID = process.env.ANTHROPIC_MODEL ?? MODEL_HAIKU;
+
+const TEXT_MODEL_ID   = process.env.ANTHROPIC_TEXT_MODEL   ?? MODEL_SONNET;
+const VISION_MODEL_ID = process.env.ANTHROPIC_VISION_MODEL ?? MODEL_HAIKU;
 
 const TEXT_PARSE_TOOL: Anthropic.Tool = {
   name: "extract_expense",
@@ -84,7 +92,7 @@ function extractToolInput(message: Anthropic.Message): Record<string, unknown> {
 export async function callBedrock(prompt: string): Promise<Record<string, unknown>> {
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   const message = await client.messages.create({
-    model: MODEL_ID,
+    model: TEXT_MODEL_ID,
     max_tokens: 1024,
     tools: [TEXT_PARSE_TOOL],
     tool_choice: { type: "tool", name: "extract_expense" },
@@ -100,7 +108,7 @@ export async function callBedrockVision(
 ): Promise<Record<string, unknown>> {
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   const message = await client.messages.create({
-    model: MODEL_ID,
+    model: VISION_MODEL_ID,
     max_tokens: 2048,
     tools: [OCR_TOOL],
     tool_choice: { type: "tool", name: "extract_receipt" },
@@ -115,5 +123,5 @@ export async function callBedrockVision(
   return extractToolInput(message);
 }
 
-export const CURRENT_MODEL = MODEL_ID;
+export const CURRENT_MODELS = { text: TEXT_MODEL_ID, vision: VISION_MODEL_ID };
 export const MODELS = { HAIKU: MODEL_HAIKU, SONNET: MODEL_SONNET };
