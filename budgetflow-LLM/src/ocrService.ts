@@ -1,5 +1,8 @@
 // BudgetFlow LLM Service - OCR 서비스
 // (변경) Textract 권한 이슈로 Claude Vision 직접 분석 방식으로 전환
+// (변경, 2026-06-20) 이미지 해상도 가드레일 추가 — 노이즈 강건성 테스트에서
+//   저해상도 이미지가 신뢰도는 높게(0.82) 나오면서 실제 금액 추출은 0%로 틀리는
+//   위험 패턴을 확인함. 가로 500px 미만이면 LLM 호출 없이 재업로드 요청으로 처리.
 
 import { getImageFromS3 } from "./s3Client";
 import { buildOcrVisionPrompt } from "./promptBuilder";
@@ -15,6 +18,7 @@ type MissingField = z.infer<typeof MissingFieldSchema>;
 
 const CONFIDENCE_THRESHOLD = 0.7;
 const OCR_RAW_TEXT_SIZE_LIMIT = 10 * 1024;
+const MIN_IMAGE_WIDTH = 500; // 노이즈 테스트(2026-06-20) 기준 — 이 미만은 재업로드 요청
 
 interface LLMOcrRaw {
   date: string | null;
@@ -142,6 +146,16 @@ export async function runOcrPipeline(input: OcrInput): Promise<OcrOutput> {
   if (!imageResult.success) {
     console.error("[OCR] S3 이미지 다운로드 실패:", imageResult.error);
     return ocrFailureOutput(input, "이미지 다운로드 실패");
+  }
+
+  if (imageResult.width !== null && imageResult.width < MIN_IMAGE_WIDTH) {
+    console.warn(
+      `[OCR] 이미지 해상도 낮음 (${imageResult.width}px < ${MIN_IMAGE_WIDTH}px) → LLM 호출 생략, 재업로드 요청`,
+    );
+    return ocrFailureOutput(
+      input,
+      `이미지 해상도가 너무 낮습니다 (가로 ${imageResult.width}px). 더 선명한 사진으로 다시 업로드해주세요.`,
+    );
   }
 
   let llmRaw: LLMOcrRaw;
