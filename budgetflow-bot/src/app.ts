@@ -141,11 +141,36 @@ app.event('message', async ({ event, client }) => {
     // 이미지가 있으면 다운로드 후 S3 업로드
     if (hasImage) {
       const file = files.find((f: any) => f.mimetype?.startsWith('image/'));
-      const imageBuffer = await downloadImage(file.url_private);
-      s3Url = await uploadToS3(imageBuffer, file.name, file.mimetype);
-      console.log('S3 업로드 완료:', s3Url);
+    
+      if (!file?.url_private) {
+        await client.chat.postMessage({
+          channel: msg.channel,
+          text: '❌ 이미지 파일 정보를 가져오지 못했습니다.',
+        });
+        return;
+      }
+    
+      try {
+        const imageBuffer = await downloadImage(file.url_private);
+        s3Url = await uploadToS3(imageBuffer, file.name, file.mimetype);
+        console.log('S3 업로드 완료:', s3Url);
+      } catch (error) {
+        console.error('S3 업로드 실패:', error);
+        await client.chat.postMessage({
+          channel: msg.channel,
+          text: '❌ 영수증 이미지 업로드 중 오류가 발생했습니다.',
+        });
+        return;
+      }
     }
-
+    
+    if (hasImage && !s3Url) {
+      await client.chat.postMessage({
+        channel: msg.channel,
+        text: '❌ 영수증 이미지 처리에 실패했습니다.',
+      });
+      return;
+    }
     // 슬랙 사용자 이름 가져오기
     const displayName = await getSlackUserName(client, msg.user);
 

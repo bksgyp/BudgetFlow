@@ -4,7 +4,7 @@
 
 import express, { Request, Response } from "express";
 import dotenv from "dotenv";
-import { callBedrock } from "./bedrockClient";
+import { callBedrock, CURRENT_MODELS } from "./bedrockClient";
 import { buildTextParsePrompt } from "./promptBuilder";
 import { calcTextParseConfidence, shouldRequestReInput } from "./confidence";
 import { runOcrPipeline } from "./ocrService";
@@ -140,7 +140,7 @@ app.post("/analyze/image", async (req: Request, res: Response) => {
 // ─────────────────────────────────────────
 
 app.get("/health", (_req: Request, res: Response) => {
-  res.status(200).json({ status: "ok" });
+  res.status(200).json({ status: "ok", models: CURRENT_MODELS });
 });
 
 // ─────────────────────────────────────────
