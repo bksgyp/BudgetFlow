@@ -38,6 +38,7 @@ try {
 // 15개 전체 API 세부 라우터 등록
 app.use('/api/auth', authRouter);
 app.use('/api/projects', authenticateJWT, projectRouter);
+// 봇 전용 엔드포인트 — POST /는 Slack 봇이 직접 호출하므로 인증 없음. GET/PATCH는 라우터 내부에서 authenticateJWT 적용.
 app.use('/api/expenses', expenseRouter);
 app.use('/api/budget-categories', authenticateJWT, categoryRouter);
 app.use('/api/projects', authenticateJWT, templateRouter);
