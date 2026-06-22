@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Folder, LogOut, Receipt, Settings2 } from "lucide-react";
 
+import { useSelectedProject } from "@/lib/hooks/use-selected-project";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -15,6 +16,8 @@ const navItems = [
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const { projects, selectedProjectId, setSelectedProjectId } =
+    useSelectedProject();
 
   return (
     <aside className="flex h-screen w-[232px] shrink-0 flex-col gap-[18px] bg-[#0C3832] px-[14px] py-5 sticky top-0">
@@ -32,6 +35,22 @@ export function AppSidebar() {
           <span className="text-[#79C5B6]">Flow</span>
         </span>
       </Link>
+
+      {/* 프로젝트 선택 */}
+      {projects.length > 0 && (
+        <select
+          aria-label="프로젝트 선택"
+          className="w-full rounded-lg bg-white/[0.08] px-3 py-[9px] text-[13px] font-semibold text-white outline-none"
+          onChange={(event) => setSelectedProjectId(event.target.value)}
+          value={selectedProjectId ?? ""}
+        >
+          {projects.map((project) => (
+            <option key={project.id} value={project.id}>
+              {project.name}
+            </option>
+          ))}
+        </select>
+      )}
 
       {/* 내비게이션 */}
       <nav className="flex flex-col gap-[3px]">

@@ -16,7 +16,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { DEMO_PROJECT_ID } from "@/lib/config/demo";
 import type { BudgetCategory, Expense } from "@/lib/domain";
 import {
   expenseReviewSchema,
@@ -34,6 +33,7 @@ import { evidenceStatusTone, expenseStatusTone } from "@/lib/status-tone";
 interface ExpenseDetailModalProps {
   expense: Expense | null;
   categories: BudgetCategory[];
+  projectId: string;
   onClose: () => void;
 }
 
@@ -42,11 +42,12 @@ type ConfirmVariant = "approve" | "reject" | null;
 export function ExpenseDetailModal({
   expense,
   categories,
+  projectId,
   onClose,
 }: ExpenseDetailModalProps) {
   const [confirmVariant, setConfirmVariant] = useState<ConfirmVariant>(null);
-  const approveExpense = useApproveExpense(DEMO_PROJECT_ID);
-  const rejectExpense = useRejectExpense(DEMO_PROJECT_ID);
+  const approveExpense = useApproveExpense(projectId);
+  const rejectExpense = useRejectExpense(projectId);
 
   const form = useForm<ExpenseReviewInput, undefined, ExpenseReviewValues>({
     resolver: zodResolver(expenseReviewSchema),
@@ -128,14 +129,20 @@ export function ExpenseDetailModal({
                     </span>
                   </div>
                   <div className="mt-2 flex justify-between gap-3">
-                    <span className="text-[var(--bf-text-secondary)]">금액</span>
+                    <span className="text-[var(--bf-text-secondary)]">
+                      금액
+                    </span>
                     <span className="font-bold tabular-nums">
                       {formatCurrency(expense.amount)}
                     </span>
                   </div>
                   <div className="mt-2 flex justify-between gap-3">
-                    <span className="text-[var(--bf-text-secondary)]">증빙</span>
-                    <StatusBadge tone={evidenceStatusTone[expense.evidenceStatus]}>
+                    <span className="text-[var(--bf-text-secondary)]">
+                      증빙
+                    </span>
+                    <StatusBadge
+                      tone={evidenceStatusTone[expense.evidenceStatus]}
+                    >
                       {evidenceStatusLabel[expense.evidenceStatus]}
                     </StatusBadge>
                   </div>

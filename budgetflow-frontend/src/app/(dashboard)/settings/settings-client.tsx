@@ -16,7 +16,6 @@ import { TextArea, TextInput } from "@/components/form-controls";
 import { FormField } from "@/components/form-field";
 import { SummaryCard } from "@/components/summary-card";
 import { Button } from "@/components/ui/button";
-import { DEMO_PROJECT_ID } from "@/lib/config/demo";
 import type {
   BudgetCategory,
   Project,
@@ -37,6 +36,7 @@ import {
   useUploadProjectTemplate,
   useUpdateBudgetCategory,
 } from "@/lib/hooks/use-budgetflow";
+import { useSelectedProject } from "@/lib/hooks/use-selected-project";
 
 const defaultValues: BudgetCategoryFormInput = {
   budgetLimit: 100_000,
@@ -61,12 +61,24 @@ const settingsTabs = [
 type SettingsTab = (typeof settingsTabs)[number]["id"];
 
 export function SettingsClient() {
+  const { selectedProjectId } = useSelectedProject();
+
+  if (!selectedProjectId) {
+    return null;
+  }
+
+  return <SettingsClientInner projectId={selectedProjectId} />;
+}
+
+function SettingsClientInner({ projectId }: { projectId: string }) {
   const [activeTab, setActiveTab] = useState<SettingsTab>("template");
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
-  const projectQuery = useProject(DEMO_PROJECT_ID);
-  const categoriesQuery = useBudgetCategories(DEMO_PROJECT_ID);
-  const createCategory = useCreateBudgetCategory(DEMO_PROJECT_ID);
-  const updateCategory = useUpdateBudgetCategory(DEMO_PROJECT_ID);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
+    null,
+  );
+  const projectQuery = useProject(projectId);
+  const categoriesQuery = useBudgetCategories(projectId);
+  const createCategory = useCreateBudgetCategory(projectId);
+  const updateCategory = useUpdateBudgetCategory(projectId);
   const selectedCategory = useMemo(
     () =>
       categoriesQuery.data?.find(
@@ -124,7 +136,7 @@ export function SettingsClient() {
         budgetLimit: values.budgetLimit,
         keywords,
         name: values.name,
-        projectId: DEMO_PROJECT_ID,
+        projectId,
       });
     }
 
@@ -141,7 +153,11 @@ export function SettingsClient() {
       />
 
       <Panel className="p-1">
-        <div className="grid gap-1 sm:grid-cols-3" role="tablist" aria-label="설정 범주">
+        <div
+          className="grid gap-1 sm:grid-cols-3"
+          role="tablist"
+          aria-label="설정 범주"
+        >
           {settingsTabs.map((tab) => (
             <button
               aria-selected={activeTab === tab.id}
@@ -165,7 +181,10 @@ export function SettingsClient() {
       <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-4">
           {activeTab === "template" ? (
-            <TemplateUploadPanel project={projectQuery.data ?? null} />
+            <TemplateUploadPanel
+              project={projectQuery.data ?? null}
+              projectId={projectId}
+            />
           ) : null}
 
           {activeTab === "categories" ? (
@@ -173,9 +192,12 @@ export function SettingsClient() {
               <Panel className="bf-panel-pad">
                 <SectionToolbar>
                   <div>
-                    <h2 className="text-lg font-bold text-zinc-950">예산 카테고리와 한도</h2>
+                    <h2 className="text-lg font-bold text-zinc-950">
+                      예산 카테고리와 한도
+                    </h2>
                     <p className="bf-helper mt-1">
-                      카테고리 한도와 키워드는 AI 분류 기준으로 백엔드에 전달됩니다.
+                      카테고리 한도와 키워드는 AI 분류 기준으로 백엔드에
+                      전달됩니다.
                     </p>
                   </div>
                 </SectionToolbar>
@@ -219,15 +241,16 @@ export function SettingsClient() {
                       type="button"
                       variant="outline"
                     >
-                      <Plus data-icon="inline-start" />
-                      새 항목
+                      <Plus data-icon="inline-start" />새 항목
                     </Button>
                   }
                 >
                   <h2 className="text-lg font-bold text-zinc-950">
                     {selectedCategory ? "카테고리 수정" : "카테고리 추가"}
                   </h2>
-                  <p className="bf-helper mt-1">쉼표로 분류 키워드를 입력합니다.</p>
+                  <p className="bf-helper mt-1">
+                    쉼표로 분류 키워드를 입력합니다.
+                  </p>
                 </SectionToolbar>
 
                 <form className="mt-5 space-y-4" onSubmit={onSubmit}>
@@ -236,7 +259,10 @@ export function SettingsClient() {
                       label="카테고리명"
                       error={form.formState.errors.name?.message}
                     >
-                      <TextInput placeholder="다과비" {...form.register("name")} />
+                      <TextInput
+                        placeholder="다과비"
+                        {...form.register("name")}
+                      />
                     </FormField>
                     <FormField
                       label="예산 한도"
@@ -261,7 +287,10 @@ export function SettingsClient() {
                   </FormField>
                   <Button disabled={isMutating} type="submit">
                     {isMutating ? (
-                      <Loader2 className="animate-spin" data-icon="inline-start" />
+                      <Loader2
+                        className="animate-spin"
+                        data-icon="inline-start"
+                      />
                     ) : selectedCategory ? (
                       <Save data-icon="inline-start" />
                     ) : (
@@ -278,9 +307,12 @@ export function SettingsClient() {
             <Panel className="bf-panel-pad">
               <SectionToolbar>
                 <div>
-                  <h2 className="text-lg font-bold text-zinc-950">분류 키워드</h2>
+                  <h2 className="text-lg font-bold text-zinc-950">
+                    분류 키워드
+                  </h2>
                   <p className="bf-helper mt-1">
-                    예산 카테고리별 키워드는 Slack 입력을 자동 분류하는 기준입니다.
+                    예산 카테고리별 키워드는 Slack 입력을 자동 분류하는
+                    기준입니다.
                   </p>
                 </div>
               </SectionToolbar>
@@ -291,8 +323,14 @@ export function SettingsClient() {
                     key={category.id}
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <strong className="text-sm text-zinc-950">{category.name}</strong>
-                      <StatusBadge tone={category.remainingAmount < 0 ? "missing" : "approved"}>
+                      <strong className="text-sm text-zinc-950">
+                        {category.name}
+                      </strong>
+                      <StatusBadge
+                        tone={
+                          category.remainingAmount < 0 ? "missing" : "approved"
+                        }
+                      >
                         {category.remainingAmount < 0 ? "초과" : "사용 가능"}
                       </StatusBadge>
                     </div>
@@ -311,7 +349,10 @@ export function SettingsClient() {
             <h2 className="text-lg font-bold text-zinc-950">검토 필요 정책</h2>
             <div className="mt-4 flex flex-wrap gap-2">
               {reviewPolicies.map((policy) => (
-                <StatusBadge key={policy} tone={policy === "영수증 없음" ? "missing" : "review"}>
+                <StatusBadge
+                  key={policy}
+                  tone={policy === "영수증 없음" ? "missing" : "review"}
+                >
                   {policy}
                 </StatusBadge>
               ))}
@@ -319,7 +360,9 @@ export function SettingsClient() {
           </Panel>
 
           <Panel className="bf-panel-pad">
-            <h2 className="text-lg font-bold text-zinc-950">엑셀 생성 전 확인</h2>
+            <h2 className="text-lg font-bold text-zinc-950">
+              엑셀 생성 전 확인
+            </h2>
             <div className="mt-4 space-y-3">
               {[
                 "카테고리별 한도와 승인 사용액을 확인합니다.",
@@ -344,7 +387,9 @@ export function SettingsClient() {
                   className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2"
                   key={category.id}
                 >
-                  <strong className="text-sm text-zinc-950">{category.name}</strong>
+                  <strong className="text-sm text-zinc-950">
+                    {category.name}
+                  </strong>
                   <p className="mt-1 text-sm leading-6 text-zinc-600">
                     {category.keywords.join(", ")}
                   </p>
@@ -358,24 +403,48 @@ export function SettingsClient() {
   );
 }
 
-function TemplateUploadPanel({ project }: { project: Project | null }) {
+function TemplateUploadPanel({
+  project,
+  projectId,
+}: {
+  project: Project | null;
+  projectId: string;
+}) {
   const [fileName, setFileName] = useState("");
   const [uploadResult, setUploadResult] = useState<TemplateUploadResult | null>(
     null,
   );
   const [error, setError] = useState<string | null>(null);
-  const uploadTemplate = useUploadProjectTemplate(DEMO_PROJECT_ID);
-  const confirmMapping = useConfirmTemplateMapping(DEMO_PROJECT_ID);
+  const uploadTemplate = useUploadProjectTemplate(projectId);
+  const confirmMapping = useConfirmTemplateMapping(projectId);
   const isPending = uploadTemplate.isPending || confirmMapping.isPending;
 
-  const visibleMappings =
-    uploadResult?.mappings ??
-    [
-      { confirmed: true, confidence: 0.94, sourceColumn: "날짜", targetField: "date" as const },
-      { confirmed: true, confidence: 0.9, sourceColumn: "사용처", targetField: "merchant" as const },
-      { confirmed: false, confidence: 0.88, sourceColumn: "카테고리", targetField: "category" as const },
-      { confirmed: false, confidence: 0.76, sourceColumn: "증빙 링크", targetField: "evidence" as const },
-    ];
+  const visibleMappings = uploadResult?.mappings ?? [
+    {
+      confirmed: true,
+      confidence: 0.94,
+      sourceColumn: "날짜",
+      targetField: "date" as const,
+    },
+    {
+      confirmed: true,
+      confidence: 0.9,
+      sourceColumn: "사용처",
+      targetField: "merchant" as const,
+    },
+    {
+      confirmed: false,
+      confidence: 0.88,
+      sourceColumn: "카테고리",
+      targetField: "category" as const,
+    },
+    {
+      confirmed: false,
+      confidence: 0.76,
+      sourceColumn: "증빙 링크",
+      targetField: "evidence" as const,
+    },
+  ];
 
   const onUpload = async () => {
     setError(null);
@@ -388,12 +457,14 @@ function TemplateUploadPanel({ project }: { project: Project | null }) {
     try {
       const result = await uploadTemplate.mutateAsync({
         fileName,
-        projectId: DEMO_PROJECT_ID,
+        projectId,
       });
       setUploadResult(result);
     } catch (caught) {
       setError(
-        caught instanceof Error ? caught.message : "양식 업로드에 실패했습니다.",
+        caught instanceof Error
+          ? caught.message
+          : "양식 업로드에 실패했습니다.",
       );
     }
   };
@@ -405,12 +476,13 @@ function TemplateUploadPanel({ project }: { project: Project | null }) {
 
     const result = await confirmMapping.mutateAsync({
       mappings: uploadResult.mappings,
-      projectId: DEMO_PROJECT_ID,
+      projectId,
     });
     setUploadResult(result);
   };
 
-  const mappingStatus = uploadResult?.mappingStatus ?? project?.templateMappingStatus;
+  const mappingStatus =
+    uploadResult?.mappingStatus ?? project?.templateMappingStatus;
 
   return (
     <Panel className="bf-panel-pad" id="template-upload">
@@ -427,11 +499,17 @@ function TemplateUploadPanel({ project }: { project: Project | null }) {
               <input
                 accept=".xlsx,.xls"
                 className="sr-only"
-                onChange={(event) => setFileName(event.target.files?.[0]?.name ?? "")}
+                onChange={(event) =>
+                  setFileName(event.target.files?.[0]?.name ?? "")
+                }
                 type="file"
               />
             </label>
-            <Button disabled={isPending} onClick={() => void onUpload()} type="button">
+            <Button
+              disabled={isPending}
+              onClick={() => void onUpload()}
+              type="button"
+            >
               {uploadTemplate.isPending ? (
                 <Loader2 className="animate-spin" data-icon="inline-start" />
               ) : (
@@ -453,13 +531,19 @@ function TemplateUploadPanel({ project }: { project: Project | null }) {
         </p>
       </SectionToolbar>
 
-      {error ? <p className="mt-3 text-sm font-medium text-red-700">{error}</p> : null}
+      {error ? (
+        <p className="mt-3 text-sm font-medium text-red-700">{error}</p>
+      ) : null}
 
       <div className="mt-5">
         <SectionToolbar
           actions={
             <Button
-              disabled={isPending || !uploadResult || uploadResult.mappingStatus === "confirmed"}
+              disabled={
+                isPending ||
+                !uploadResult ||
+                uploadResult.mappingStatus === "confirmed"
+              }
               onClick={() => void onConfirmMapping()}
               type="button"
             >
@@ -486,7 +570,8 @@ function TemplateUploadPanel({ project }: { project: Project | null }) {
             >
               <span className="min-w-0">
                 <span className="block truncate">
-                  {mapping.sourceColumn} → {templateFieldLabel[mapping.targetField]}
+                  {mapping.sourceColumn} →{" "}
+                  {templateFieldLabel[mapping.targetField]}
                 </span>
                 <span className="mt-1 block text-xs text-[var(--bf-text-secondary)]">
                   추천 신뢰도 {Math.round(mapping.confidence * 100)}%
@@ -514,7 +599,11 @@ function CategoryRow({
 }) {
   const usageWidth = Math.min(100, Math.max(0, category.usageRate));
   const isOverBudget = category.remainingAmount < 0;
-  const tone = isOverBudget ? "missing" : usageWidth >= 80 ? "review" : "approved";
+  const tone = isOverBudget
+    ? "missing"
+    : usageWidth >= 80
+      ? "review"
+      : "approved";
 
   return (
     <article className={isSelected ? "bg-zinc-950/[0.04] py-4" : "py-4"}>
@@ -542,18 +631,34 @@ function CategoryRow({
             {formatCurrency(category.approvedAmount)} /{" "}
             {formatCurrency(category.budgetLimit)}
           </span>
-          <span className={isOverBudget ? "font-semibold text-red-700" : "font-semibold"}>
+          <span
+            className={
+              isOverBudget ? "font-semibold text-red-700" : "font-semibold"
+            }
+          >
             잔액 {formatCurrency(category.remainingAmount)}
           </span>
         </div>
-        <ProgressBar tone={tone === "missing" ? "missing" : tone === "review" ? "review" : "approved"} value={usageWidth} />
+        <ProgressBar
+          tone={
+            tone === "missing"
+              ? "missing"
+              : tone === "review"
+                ? "review"
+                : "approved"
+          }
+          value={usageWidth}
+        />
       </div>
     </article>
   );
 }
 
 function templateMappingStatusLabel(
-  status: Project["templateMappingStatus"] | TemplateUploadResult["mappingStatus"] | undefined,
+  status:
+    | Project["templateMappingStatus"]
+    | TemplateUploadResult["mappingStatus"]
+    | undefined,
 ) {
   if (status === "confirmed") {
     return "매핑 확정됨";
