@@ -33,7 +33,7 @@ app.use('/api/projects', authenticateJWT, projectRouter);
 app.use('/api/projects', authenticateJWT, categoryRouter);
 app.use('/api/projects', authenticateJWT, templateRouter);
 app.use('/api/projects', authenticateJWT, exportRouter);
-app.use('/api/projects', authenticateJWT, taxRouter);
+app.use('/api/projects/:projectId/tax', authenticateJWT, taxRouter);
 
 // 봇 전용 엔드포인트 — POST /는 Slack 봇이 직접 호출하므로 인증 없음. GET/PATCH는 라우터 내부에서 authenticateJWT 적용.
 app.use('/api/expenses', expenseRouter);
