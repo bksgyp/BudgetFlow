@@ -91,6 +91,10 @@ type BackendExpense = {
   description?: string;
   reviewReason?: string;
   evidenceStatus?: string;
+  evidenceFileId?: string;
+  imageUrl?: string;
+  evidenceImageUrl?: string;
+  receiptImageUrl?: string;
   aiConfidence?: number;
   missingFields?: string[];
   taxInvoiceType?: Expense["taxInvoiceType"];
@@ -229,6 +233,8 @@ function toExpense(r: BackendExpense): Expense {
     ocrQuality: r.ocrQuality ?? null,
     ocrFailureMode: r.ocrFailureMode ?? null,
     taxPeriod: r.taxPeriod ?? null,
+    receiptImageUrl:
+      r.receiptImageUrl ?? r.imageUrl ?? r.evidenceImageUrl ?? null,
     createdAt: r.createdAt ?? now,
     updatedAt: r.updatedAt ?? now,
   };
