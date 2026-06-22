@@ -1,6 +1,6 @@
 // BudgetFlow LLM Service - Express 서버
 // 백엔드 Express → POST /analyze/text, POST /analyze/image 호출로 LLM 분석 수행
-// npm install express @aws-sdk/client-bedrock-runtime @aws-sdk/client-textract zod tsx dotenv
+// v2: TaxOps 필드 추가 (2026-06-22)
 
 import express, { Request, Response } from "express";
 import dotenv from "dotenv";
@@ -21,6 +21,36 @@ const app = express();
 app.use(express.json());
 
 const PORT = process.env.PORT ?? 4000;
+
+// TaxOps 기본값 (텍스트 fallback용 — 분석 실패 시)
+const TAX_OPS_TEXT_DEFAULTS = {
+  taxInvoiceType:  null,
+  paymentMethod:   null,
+  businessPurpose: null,
+  vatClass:        null,
+  vatReason:       null,
+  deductibility:   null,
+  taxReviewStatus: "blocked" as const,
+  taxReviewReason: null,
+  ocrQuality:      null,
+  ocrFailureMode:  null,
+  extractedTaxFields: null,
+};
+
+// TaxOps 기본값 (OCR fallback용 — 분석 실패 시)
+const TAX_OPS_OCR_DEFAULTS = {
+  taxInvoiceType:  null,
+  paymentMethod:   null,
+  businessPurpose: null,
+  vatClass:        null,
+  vatReason:       null,
+  deductibility:   null,
+  taxReviewStatus: "blocked" as const,
+  taxReviewReason: null,
+  ocrQuality:      "poor" as const,
+  ocrFailureMode:  "unreadable" as const,
+  extractedTaxFields: null,
+};
 
 // ─────────────────────────────────────────
 // POST /analyze/text — 텍스트 파싱
@@ -74,7 +104,7 @@ app.post("/analyze/text", async (req: Request, res: Response) => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const confidenceResult = calcTextParseConfidence(llmRaw as any);
 
-  // 6. 최종 출력 조립
+  // 6. 최종 출력 조립 (TaxOps 필드 포함)
   const output = {
     inputType:      "text" as const,
     date:           llmRaw.date ?? null,
@@ -92,6 +122,18 @@ app.post("/analyze/text", async (req: Request, res: Response) => {
     reviewReason:   confidenceResult.reviewReason,
     reviewCode:     null,
     rawInput:       input.text,
+    // TaxOps
+    taxInvoiceType:     (llmRaw.taxInvoiceType  ?? null) as any,
+    paymentMethod:      (llmRaw.paymentMethod   ?? null) as any,
+    businessPurpose:    (llmRaw.businessPurpose ?? null) as string | null,
+    vatClass:           (llmRaw.vatClass        ?? null) as any,
+    vatReason:          (llmRaw.vatReason       ?? null) as string | null,
+    deductibility:      (llmRaw.deductibility   ?? null) as any,
+    taxReviewStatus:    ((llmRaw.taxReviewStatus as string) ?? "needs_review") as any,
+    taxReviewReason:    (llmRaw.taxReviewReason ?? null) as string | null,
+    ocrQuality:         null,
+    ocrFailureMode:     null,
+    extractedTaxFields: null,
   };
 
   // 7. Zod 검증
@@ -123,7 +165,7 @@ app.post("/analyze/image", async (req: Request, res: Response) => {
   const input = inputResult.data;
 
   try {
-    // 2. OCR 파이프라인 실행 (Textract → Bedrock → 신뢰도 계산)
+    // 2. OCR 파이프라인 실행
     const output = await runOcrPipeline(input);
     return res.status(200).json(output);
 
@@ -165,6 +207,7 @@ function textFallbackOutput(rawInput: string, reason: string) {
     reviewReason:   reason,
     reviewCode:     null,
     rawInput,
+    ...TAX_OPS_TEXT_DEFAULTS,
   };
 }
 
@@ -192,18 +235,12 @@ function ocrFallbackOutput(
     reviewCode:      null,
     ocrRawText:      "",
     ocrRawTextS3Key: null,
+    ...TAX_OPS_OCR_DEFAULTS,
   };
 }
 
-// ─────────────────────────────────────────
-// 서버 시작
-// ─────────────────────────────────────────
-
 app.listen(PORT, () => {
-  console.log(`[LLM Service] 서버 실행 중 → http://localhost:${PORT}`);
-  console.log(`  POST /analyze/text  — 텍스트 파싱`);
-  console.log(`  POST /analyze/image — 영수증 OCR`);
-  console.log(`  GET  /health        — 헬스체크`);
+  console.log(`[BudgetFlow LLM] 서버 시작 포트 ${PORT}`);
 });
 
 export default app;
