@@ -111,7 +111,7 @@ router.post('/', asyncHandler(async (req: AuthRequest, res: Response) => {
     let s3Key: string;
     try { s3Key = decodeURIComponent(new URL(rawUrl).pathname.slice(1)); }
     catch { s3Key = rawUrl; }
-    const llm = await aiOcrService.analyzeImage({ s3Key, projectId, evidenceFileId: rawUrl, submittedBy, categories });
+    const llm = await aiOcrService.analyzeImage({ s3Key, projectId, evidenceFileId: s3Key, submittedBy, categories });
     if (llm.amount === null) return res.status(200).json({ action: 'request_re_input', userId: slackUserId });
     const result = await pool.query(
       `INSERT INTO expenses (id,project_id,slack_user_id,date,amount,merchant,description,
