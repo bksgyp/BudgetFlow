@@ -5,6 +5,13 @@ import type {
   ExpenseSummary,
   ExportJob,
   Project,
+  TaxExpenseReview,
+  TaxExportJob,
+  TaxFeeImpact,
+  TaxFinding,
+  TaxFindingType,
+  TaxPeriod,
+  TaxReadinessReport,
   TemplateMappingSuggestion,
   TemplateUploadResult,
 } from "@/lib/domain";
@@ -31,13 +38,30 @@ import {
   type TemplateMappingConfirmInput,
 } from "@/lib/forms/template";
 
-import { downloadFile, http, isApiConfigured } from "./http-client";
+import { downloadFile, http, isApiConfigured, isLiveDataEnabled, isTaxApiEnabled } from "./http-client";
 import {
   mockBudgetCategories,
   mockExpenses,
   mockExportJobs,
   mockProjects,
 } from "./mock-data";
+
+// 데이터 소스: 백엔드가 준비되기 전까지는 mock이 기본이다(isLiveDataEnabled=false → 항상 mock).
+// demoMode는 실데이터가 켜진 환경에서도 튜토리얼이 항상 채워진 mock 화면에서 진행되도록 강제한다.
+let demoMode = false;
+
+export function setDemoMode(on: boolean) {
+  demoMode = on;
+}
+
+export function isDemoMode() {
+  return demoMode;
+}
+
+/** 실제 백엔드 경로를 사용할지 여부 (실데이터 OFF이거나 데모 모드면 false → mock 경로) */
+function liveApi() {
+  return isApiConfigured && isLiveDataEnabled && !demoMode;
+}
 
 // ─── 백엔드 응답 타입 (http-client camelizeKeys 적용 후 기준) ─────────────────
 
@@ -69,6 +93,17 @@ type BackendExpense = {
   evidenceStatus?: string;
   aiConfidence?: number;
   missingFields?: string[];
+  taxInvoiceType?: Expense["taxInvoiceType"];
+  paymentMethod?: Expense["paymentMethod"];
+  businessPurpose?: string | null;
+  vatClass?: Expense["vatClass"];
+  vatReason?: string | null;
+  deductibility?: Expense["deductibility"];
+  taxReviewStatus?: Expense["taxReviewStatus"];
+  taxReviewReason?: string | null;
+  ocrQuality?: Expense["ocrQuality"];
+  ocrFailureMode?: Expense["ocrFailureMode"];
+  taxPeriod?: string | null;
   createdAt?: string;
   updatedAt?: string;
 };
@@ -103,6 +138,19 @@ type BackendExportJob = {
   excludedReviewCount?: number | string;
   createdAt?: string;
 };
+
+type BackendTaxPeriod = Partial<TaxPeriod> & {
+  period: string;
+};
+
+type BackendTaxReadinessReport = Partial<TaxReadinessReport>;
+
+type BackendTaxFinding = Partial<TaxFinding> & {
+  id: string;
+  expenseId: string;
+};
+
+type BackendTaxFeeImpact = Partial<TaxFeeImpact>;
 
 // ─── 어댑터 ────────────────────────────────────────────────────────────────────
 
@@ -145,6 +193,17 @@ function toExpense(r: BackendExpense): Expense {
     aiConfidence: Number(r.aiConfidence ?? 0),
     missingFields: r.missingFields ?? [],
     reviewReason: r.reviewReason ?? null,
+    taxInvoiceType: r.taxInvoiceType ?? null,
+    paymentMethod: r.paymentMethod ?? null,
+    businessPurpose: r.businessPurpose ?? null,
+    vatClass: r.vatClass ?? null,
+    vatReason: r.vatReason ?? null,
+    deductibility: r.deductibility ?? null,
+    taxReviewStatus: r.taxReviewStatus ?? null,
+    taxReviewReason: r.taxReviewReason ?? null,
+    ocrQuality: r.ocrQuality ?? null,
+    ocrFailureMode: r.ocrFailureMode ?? null,
+    taxPeriod: r.taxPeriod ?? null,
     createdAt: r.createdAt ?? now,
     updatedAt: r.updatedAt ?? now,
   };
@@ -197,6 +256,93 @@ function toExportJob(r: BackendExportJob, projectId: string): ExportJob {
   };
 }
 
+function toTaxPeriod(r: BackendTaxPeriod, projectId: string): TaxPeriod {
+  const now = new Date().toISOString();
+  return {
+    projectId: r.projectId ?? projectId,
+    period: r.period,
+    label: r.label ?? formatTaxPeriodLabel(r.period),
+    status: r.status ?? "open",
+    transactionCount: Number(r.transactionCount ?? 0),
+    reviewCount: Number(r.reviewCount ?? 0),
+    blockedCount: Number(r.blockedCount ?? 0),
+    updatedAt: r.updatedAt ?? now,
+  };
+}
+
+function toTaxReadinessReport(
+  r: BackendTaxReadinessReport,
+  projectId: string,
+  period: string,
+): TaxReadinessReport {
+  const totalExpenseCount = Number(r.totalExpenseCount ?? 0);
+  const readyCount = Number(r.readyCount ?? 0);
+  const needsReviewCount = Number(r.needsReviewCount ?? 0);
+  const blockedCount = Number(r.blockedCount ?? 0);
+  return {
+    projectId: r.projectId ?? projectId,
+    period: r.period ?? period,
+    score: Number(r.score ?? 0),
+    automatableRate: Number(r.automatableRate ?? 0),
+    readyCount,
+    needsReviewCount,
+    blockedCount,
+    missingEvidenceCount: Number(r.missingEvidenceCount ?? 0),
+    totalExpenseCount,
+    generatedAt: r.generatedAt ?? new Date().toISOString(),
+  };
+}
+
+function toTaxFinding(
+  r: BackendTaxFinding,
+  projectId: string,
+  period: string,
+): TaxFinding {
+  return {
+    id: r.id,
+    projectId: r.projectId ?? projectId,
+    period: r.period ?? period,
+    expenseId: r.expenseId,
+    type: r.type ?? "vat_review",
+    severity: r.severity ?? "review",
+    title: r.title ?? "세무 검토 필요",
+    description: r.description ?? "",
+    recommendedAction: r.recommendedAction ?? "검토 후 상태를 갱신하세요.",
+    createdAt: r.createdAt ?? new Date().toISOString(),
+  };
+}
+
+function toTaxFeeImpact(
+  r: BackendTaxFeeImpact,
+  projectId: string,
+  period: string,
+): TaxFeeImpact {
+  const currentMonthlyFee = Number(r.currentMonthlyFee ?? 375_000);
+  const budgetflowMonthlyFee = Number(r.budgetflowMonthlyFee ?? 301_400);
+  const monthlySavings = Number(
+    r.monthlySavings ?? currentMonthlyFee - budgetflowMonthlyFee,
+  );
+  return {
+    projectId: r.projectId ?? projectId,
+    period: r.period ?? period,
+    currentMonthlyFee,
+    budgetflowMonthlyFee,
+    monthlySavings,
+    annualSavings: Number(r.annualSavings ?? monthlySavings * 12),
+    bookkeepingFee: Number(r.bookkeepingFee ?? 300_000),
+    corporateTaxAdjustmentMonthlyEquivalent: Number(
+      r.corporateTaxAdjustmentMonthlyEquivalent ?? 75_000,
+    ),
+    assumptions:
+      r.assumptions ??
+      [
+        "월 기장료 300,000원",
+        "법인세 조정료 900,000원을 12개월로 배분",
+        "반복 증빙 정리와 신고 준비 자료 생성 업무를 BudgetFlow가 대체",
+      ],
+  };
+}
+
 // ─── Mock 헬퍼 ────────────────────────────────────────────────────────────────
 
 type GetExpensesParams = {
@@ -218,6 +364,11 @@ function normalizeSlackChannelName(slackChannelName: string) {
   return slackChannelName.trim().replace(/^#/, "");
 }
 
+function formatTaxPeriodLabel(period: string) {
+  const [year, month] = period.split("-");
+  return `${year}년 ${Number(month)}월`;
+}
+
 function approvedExpensesForProject(projectId: string) {
   return mockExpenses.filter(
     (expense) =>
@@ -228,6 +379,216 @@ function approvedExpensesForProject(projectId: string) {
 
 function expensesForProject(projectId: string) {
   return mockExpenses.filter((expense) => expense.projectId === projectId);
+}
+
+function getExpenseTaxPeriod(expense: Expense) {
+  return expense.taxPeriod ?? expense.date.slice(0, 7);
+}
+
+function taxExpensesForProjectPeriod(projectId: string, period: string) {
+  return expensesForProject(projectId).filter(
+    (expense) => getExpenseTaxPeriod(expense) === period,
+  );
+}
+
+// 세무 기능은 아직 백엔드에 없어 항상 mock 시드로 동작한다.
+// 실제 백엔드의 프로젝트 ID(mock에 없는 id)가 들어와도 데모 시드 프로젝트로 안전하게 대체한다.
+function resolveMockTaxProjectId(projectId: string) {
+  return mockProjects.some((project) => project.id === projectId)
+    ? projectId
+    : (mockProjects[0]?.id ?? projectId);
+}
+
+function inferTaxReviewStatus(expense: Expense): NonNullable<Expense["taxReviewStatus"]> {
+  if (expense.taxReviewStatus) return expense.taxReviewStatus;
+  if (expense.evidenceStatus === "none" || expense.evidenceStatus === "ocr_failed") {
+    return "blocked";
+  }
+  if (expense.status === "needs_review" || expense.aiConfidence < 0.85) {
+    return "needs_review";
+  }
+  return "ready";
+}
+
+function inferOcrQuality(expense: Expense): NonNullable<Expense["ocrQuality"]> {
+  if (expense.ocrQuality) return expense.ocrQuality;
+  if (expense.evidenceStatus === "ocr_failed") return "failed";
+  if (expense.evidenceStatus === "uploaded" || expense.aiConfidence < 0.88) {
+    return "partial";
+  }
+  return "good";
+}
+
+function inferVatClass(expense: Expense): NonNullable<Expense["vatClass"]> {
+  if (expense.vatClass) return expense.vatClass;
+  if (expense.evidenceStatus === "none") return "unknown";
+  if (expense.merchant.includes("식당") || expense.merchant.includes("카페")) {
+    return "vat_non_credit_candidate";
+  }
+  return "vat_credit_candidate";
+}
+
+function hydrateTaxExpense(expense: Expense): Expense {
+  const taxReviewStatus = inferTaxReviewStatus(expense);
+  const ocrQuality = inferOcrQuality(expense);
+  const vatClass = inferVatClass(expense);
+
+  return {
+    ...expense,
+    taxInvoiceType:
+      expense.taxInvoiceType ??
+      (expense.evidenceStatus === "none" ? "unknown" : "card_receipt"),
+    paymentMethod: expense.paymentMethod ?? "corporate_card",
+    businessPurpose: expense.businessPurpose ?? expense.description,
+    vatClass,
+    vatReason:
+      expense.vatReason ??
+      (vatClass === "vat_non_credit_candidate"
+        ? "접대/식음료 성격 지출은 공제 가능 여부를 검토합니다."
+        : "증빙과 사업 관련성이 확인되면 매입세액 공제 후보입니다."),
+    deductibility:
+      expense.deductibility ??
+      (expense.status === "needs_review" ? "mixed" : "business"),
+    taxReviewStatus,
+    taxReviewReason:
+      expense.taxReviewReason ??
+      (taxReviewStatus === "blocked"
+        ? "증빙 누락 또는 OCR 실패로 신고 준비 자료에서 차단됩니다."
+        : taxReviewStatus === "needs_review"
+          ? (expense.reviewReason ?? "세무 관점 추가 검토 필요")
+          : null),
+    ocrQuality,
+    ocrFailureMode:
+      expense.ocrFailureMode ??
+      (expense.evidenceStatus === "none" ? "amount_missing" : "none"),
+    taxPeriod: getExpenseTaxPeriod(expense),
+  };
+}
+
+function buildMockTaxPeriods(projectId: string): TaxPeriod[] {
+  const periodMap = new Map<string, Expense[]>();
+  expensesForProject(projectId).forEach((expense) => {
+    const period = getExpenseTaxPeriod(expense);
+    periodMap.set(period, [...(periodMap.get(period) ?? []), expense]);
+  });
+
+  return [...periodMap.entries()]
+    .map(([period, expenses]) => {
+      const hydrated = expenses.map(hydrateTaxExpense);
+      return {
+        projectId,
+        period,
+        label: formatTaxPeriodLabel(period),
+        status: "open" as const,
+        transactionCount: expenses.length,
+        reviewCount: hydrated.filter(
+          (expense) => expense.taxReviewStatus === "needs_review",
+        ).length,
+        blockedCount: hydrated.filter(
+          (expense) => expense.taxReviewStatus === "blocked",
+        ).length,
+        updatedAt:
+          hydrated
+            .map((expense) => expense.updatedAt)
+            .sort((a, b) => Date.parse(b) - Date.parse(a))[0] ??
+          new Date().toISOString(),
+      };
+    })
+    .sort((a, b) => b.period.localeCompare(a.period));
+}
+
+function buildMockTaxReadiness(
+  projectId: string,
+  period: string,
+): TaxReadinessReport {
+  const expenses = taxExpensesForProjectPeriod(projectId, period).map(
+    hydrateTaxExpense,
+  );
+  const totalExpenseCount = expenses.length;
+  const readyCount = expenses.filter(
+    (expense) => expense.taxReviewStatus === "ready",
+  ).length;
+  const needsReviewCount = expenses.filter(
+    (expense) => expense.taxReviewStatus === "needs_review",
+  ).length;
+  const blockedCount = expenses.filter(
+    (expense) => expense.taxReviewStatus === "blocked",
+  ).length;
+  const missingEvidenceCount = expenses.filter(
+    (expense) => expense.evidenceStatus === "none",
+  ).length;
+  const score =
+    totalExpenseCount === 0
+      ? 0
+      : Math.max(
+          0,
+          Math.round(
+            ((readyCount + needsReviewCount * 0.55) / totalExpenseCount) * 100 -
+              blockedCount * 8,
+          ),
+        );
+
+  return {
+    projectId,
+    period,
+    score,
+    automatableRate:
+      totalExpenseCount === 0
+        ? 0
+        : Math.round((readyCount / totalExpenseCount) * 100),
+    readyCount,
+    needsReviewCount,
+    blockedCount,
+    missingEvidenceCount,
+    totalExpenseCount,
+    generatedAt: new Date().toISOString(),
+  };
+}
+
+function buildMockTaxFindings(projectId: string, period: string): TaxFinding[] {
+  const typeByExpense = (expense: Expense): TaxFindingType => {
+    if (expense.evidenceStatus === "none") return "missing_evidence";
+    if (expense.ocrQuality === "failed") return "ocr_failure";
+    if (expense.deductibility === "personal_risk") return "personal_risk";
+    return "vat_review";
+  };
+
+  return taxExpensesForProjectPeriod(projectId, period)
+    .map(hydrateTaxExpense)
+    .filter((expense) => expense.taxReviewStatus !== "ready")
+    .map((expense) => {
+      const type = typeByExpense(expense);
+      const severity = expense.taxReviewStatus === "blocked" ? "blocking" : "review";
+      return {
+        id: `tax-finding-${expense.id}`,
+        projectId,
+        period,
+        expenseId: expense.id,
+        type,
+        severity,
+        title:
+          type === "missing_evidence"
+            ? "증빙 누락"
+            : type === "ocr_failure"
+              ? "OCR 실패"
+              : type === "personal_risk"
+                ? "개인 지출 위험"
+                : "VAT 후보 검토",
+        description:
+          expense.taxReviewReason ??
+          expense.reviewReason ??
+          "신고 준비 자료에 포함하기 전에 세무 검토가 필요합니다.",
+        recommendedAction:
+          severity === "blocking"
+            ? "증빙을 보완하거나 신고 준비 패킷에서 제외하세요."
+            : "사업 목적과 VAT 후보 사유를 확인한 뒤 준비 완료로 전환하세요.",
+        createdAt: expense.updatedAt,
+      };
+    });
+}
+
+function buildMockTaxFeeImpact(projectId: string, period: string): TaxFeeImpact {
+  return toTaxFeeImpact({}, projectId, period);
 }
 
 function approvedAmountByCategory(projectId: string) {
@@ -337,7 +698,7 @@ function createMockMappingSuggestions(): TemplateMappingSuggestion[] {
 // ─── API 함수 ─────────────────────────────────────────────────────────────────
 
 export async function getProjects(): Promise<Project[]> {
-  if (isApiConfigured) {
+  if (liveApi()) {
     const raw = await http.get<BackendProject[]>("/api/projects");
     return raw.map(toProject).sort((a, b) => {
       if (a.status !== b.status) return a.status === "active" ? -1 : 1;
@@ -353,7 +714,7 @@ export async function getProjects(): Promise<Project[]> {
 }
 
 export async function getProject(projectId: string): Promise<Project | null> {
-  if (isApiConfigured) {
+  if (liveApi()) {
     const raw = await http.get<BackendProject>(`/api/projects/${projectId}`);
     return toProject(raw);
   }
@@ -369,7 +730,7 @@ export async function createProject(
   if (!result.success)
     throw new Error("프로젝트 생성 입력이 올바르지 않습니다.");
 
-  if (isApiConfigured) {
+  if (liveApi()) {
     const raw = await http.post<BackendProject>("/api/projects", {
       name: result.data.name.trim(),
       totalBudget: result.data.totalBudget,
@@ -403,7 +764,7 @@ export async function createProject(
 }
 
 export async function closeProject(projectId: string): Promise<Project> {
-  if (isApiConfigured) {
+  if (liveApi()) {
     const raw = await http.post<BackendProject>(
       `/api/projects/${projectId}/close`,
       {},
@@ -428,7 +789,7 @@ export async function uploadProjectTemplate(
   if (!result.success)
     throw new Error("엑셀 양식 업로드 입력이 올바르지 않습니다.");
 
-  if (isApiConfigured) {
+  if (liveApi()) {
     await http.post(`/api/projects/${result.data.projectId}/template`, {
       fileName: result.data.fileName.trim(),
     });
@@ -468,7 +829,7 @@ export async function confirmTemplateMapping(
   if (!result.success)
     throw new Error("엑셀 컬럼 매핑 입력이 올바르지 않습니다.");
 
-  if (isApiConfigured) {
+  if (liveApi()) {
     await http.patch(
       `/api/projects/${result.data.projectId}/template-mapping`,
       {
@@ -513,7 +874,7 @@ export async function getExpenses({
   projectId,
   status = "all",
 }: GetExpensesParams): Promise<Expense[]> {
-  if (isApiConfigured) {
+  if (liveApi()) {
     const params = new URLSearchParams({ projectId });
     if (status !== "all") params.set("status", status);
     const raw = await http.get<BackendExpense[]>(`/api/expenses?${params}`);
@@ -523,6 +884,7 @@ export async function getExpenses({
   const expenses = mockExpenses
     .filter((expense) => expense.projectId === projectId)
     .filter((expense) => status === "all" || expense.status === status)
+    .map(hydrateTaxExpense)
     .sort(byNewestCreatedAt);
   return clone(expenses);
 }
@@ -533,7 +895,7 @@ export async function approveExpense(
   const result = expenseReviewSchema.safeParse(input);
   if (!result.success) throw new Error("지출 검토 입력이 올바르지 않습니다.");
 
-  if (isApiConfigured) {
+  if (liveApi()) {
     const raw = await http.patch<BackendExpense>(
       `/api/expenses/${result.data.expenseId}/approve`,
       {
@@ -571,7 +933,7 @@ export async function rejectExpense(
   const result = expenseRejectSchema.safeParse(input);
   if (!result.success) throw new Error("지출 반려 입력이 올바르지 않습니다.");
 
-  if (isApiConfigured) {
+  if (liveApi()) {
     const raw = await http.patch<BackendExpense>(
       `/api/expenses/${result.data.expenseId}/reject`,
       { reason: result.data.reason?.trim() || "관리자 반려" },
@@ -593,7 +955,7 @@ export async function rejectExpense(
 export async function getExpenseSummary(
   projectId: string,
 ): Promise<ExpenseSummary> {
-  if (isApiConfigured) {
+  if (liveApi()) {
     const raw = await http.get<BackendExpenseSummary>(
       `/api/expenses/summary?projectId=${projectId}`,
     );
@@ -629,7 +991,7 @@ export async function getExpenseSummary(
 export async function getBudgetCategories(
   projectId: string,
 ): Promise<BudgetCategory[]> {
-  if (isApiConfigured) {
+  if (liveApi()) {
     const raw = await http.get<BackendCategory[]>(
       `/api/budget-categories?projectId=${projectId}`,
     );
@@ -650,7 +1012,7 @@ export async function createBudgetCategory(
   if (!result.success)
     throw new Error("예산 카테고리 입력이 올바르지 않습니다.");
 
-  if (isApiConfigured) {
+  if (liveApi()) {
     const raw = await http.post<BackendCategory>("/api/budget-categories", {
       projectId: result.data.projectId,
       name: result.data.name.trim(),
@@ -680,7 +1042,7 @@ export async function updateBudgetCategory(
   if (!result.success)
     throw new Error("예산 카테고리 입력이 올바르지 않습니다.");
 
-  if (isApiConfigured) {
+  if (liveApi()) {
     const raw = await http.patch<BackendCategory>(
       `/api/budget-categories/${result.data.categoryId}`,
       {
@@ -705,7 +1067,7 @@ export async function updateBudgetCategory(
 }
 
 export async function getExportJobs(projectId: string): Promise<ExportJob[]> {
-  if (isApiConfigured) {
+  if (liveApi()) {
     const raw = await http.get<BackendExportJob[]>(
       `/api/projects/${projectId}/exports`,
     );
@@ -722,7 +1084,7 @@ export async function getExportJobs(projectId: string): Promise<ExportJob[]> {
 export async function requestExpenseReportExport(
   projectId: string,
 ): Promise<ExportJob> {
-  if (isApiConfigured) {
+  if (liveApi()) {
     await downloadFile(
       `/api/projects/${projectId}/exports/expense-report`,
       `expense-report-${projectId}.xlsx`,
@@ -765,4 +1127,197 @@ export async function requestExpenseReportExport(
   };
   mockExportJobs.push(exportJob);
   return clone(exportJob);
+}
+
+export async function getTaxPeriods(projectId: string): Promise<TaxPeriod[]> {
+  if (isTaxApiEnabled) {
+    const raw = await http.get<BackendTaxPeriod[]>(
+      `/api/projects/${projectId}/tax/periods`,
+    );
+    return raw.map((period) => toTaxPeriod(period, projectId));
+  }
+
+  return clone(buildMockTaxPeriods(resolveMockTaxProjectId(projectId)));
+}
+
+export async function recalculateTaxPeriod(
+  projectId: string,
+  period: string,
+): Promise<TaxReadinessReport> {
+  if (isTaxApiEnabled) {
+    const raw = await http.post<BackendTaxReadinessReport>(
+      `/api/projects/${projectId}/tax/periods/${period}/recalculate`,
+      {},
+    );
+    return toTaxReadinessReport(raw, projectId, period);
+  }
+
+  return clone(
+    buildMockTaxReadiness(resolveMockTaxProjectId(projectId), period),
+  );
+}
+
+export async function getTaxReadiness(
+  projectId: string,
+  period: string,
+): Promise<TaxReadinessReport> {
+  if (isTaxApiEnabled) {
+    const raw = await http.get<BackendTaxReadinessReport>(
+      `/api/projects/${projectId}/tax/periods/${period}/readiness`,
+    );
+    return toTaxReadinessReport(raw, projectId, period);
+  }
+
+  return clone(
+    buildMockTaxReadiness(resolveMockTaxProjectId(projectId), period),
+  );
+}
+
+export async function getTaxFindings(
+  projectId: string,
+  period: string,
+  filter: TaxFindingType | "all" = "all",
+): Promise<TaxFinding[]> {
+  if (isTaxApiEnabled) {
+    const params = new URLSearchParams();
+    if (filter !== "all") params.set("filter", filter);
+    const query = params.toString();
+    const raw = await http.get<BackendTaxFinding[]>(
+      `/api/projects/${projectId}/tax/periods/${period}/findings${
+        query ? `?${query}` : ""
+      }`,
+    );
+    return raw.map((finding) => toTaxFinding(finding, projectId, period));
+  }
+
+  const findings = buildMockTaxFindings(
+    resolveMockTaxProjectId(projectId),
+    period,
+  ).filter((finding) => filter === "all" || finding.type === filter);
+  return clone(findings);
+}
+
+export async function getTaxFeeImpact(
+  projectId: string,
+  period: string,
+): Promise<TaxFeeImpact> {
+  if (isTaxApiEnabled) {
+    const raw = await http.get<BackendTaxFeeImpact>(
+      `/api/projects/${projectId}/tax/periods/${period}/fee-impact`,
+    );
+    return toTaxFeeImpact(raw, projectId, period);
+  }
+
+  return clone(
+    buildMockTaxFeeImpact(resolveMockTaxProjectId(projectId), period),
+  );
+}
+
+export async function updateExpenseTaxReview(
+  input: TaxExpenseReview,
+): Promise<Expense> {
+  if (isTaxApiEnabled) {
+    const raw = await http.patch<BackendExpense>(
+      `/api/expenses/${input.expenseId}/tax-review`,
+      {
+        businessPurpose: input.businessPurpose?.trim() || null,
+        vatClass: input.vatClass ?? null,
+        vatReason: input.vatReason?.trim() || null,
+        deductibility: input.deductibility ?? null,
+        taxReviewStatus: input.taxReviewStatus,
+        taxReviewReason: input.taxReviewReason?.trim() || null,
+      },
+    );
+    return toExpense(raw);
+  }
+
+  const expenseIndex = findExpenseIndex(input.expenseId);
+  const current = hydrateTaxExpense(mockExpenses[expenseIndex]);
+  const updated: Expense = {
+    ...current,
+    businessPurpose: input.businessPurpose?.trim() || current.businessPurpose,
+    vatClass: input.vatClass ?? current.vatClass,
+    vatReason: input.vatReason?.trim() || current.vatReason,
+    deductibility: input.deductibility ?? current.deductibility,
+    taxReviewStatus: input.taxReviewStatus,
+    taxReviewReason: input.taxReviewReason?.trim() || null,
+    updatedAt: new Date().toISOString(),
+  };
+  mockExpenses[expenseIndex] = updated;
+  return clone(updated);
+}
+
+function createMockTaxExport(
+  projectId: string,
+  period: string,
+  type: TaxExportJob["type"],
+  persist = true,
+): TaxExportJob {
+  const expenses = taxExpensesForProjectPeriod(projectId, period).map(
+    hydrateTaxExpense,
+  );
+  const includedExpenseCount = expenses.filter(
+    (expense) => expense.taxReviewStatus !== "blocked",
+  ).length;
+  const excludedReviewCount = expenses.filter(
+    (expense) => expense.taxReviewStatus !== "ready",
+  ).length;
+  const now = new Date();
+  const exportJob: TaxExportJob = {
+    id: `tax-export-${Date.now().toString(36)}`,
+    projectId,
+    type,
+    status: "completed",
+    includedExpenseCount,
+    excludedReviewCount,
+    downloadUrl: `https://example.com/mock/${projectId}-${period}-${type}.xlsx`,
+    expiresAt: new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString(),
+    createdAt: now.toISOString(),
+  };
+  if (persist) {
+    mockExportJobs.push(exportJob);
+  }
+  return exportJob;
+}
+
+export async function requestAccountantPacketExport(
+  projectId: string,
+  period: string,
+): Promise<TaxExportJob> {
+  if (isTaxApiEnabled) {
+    await downloadFile(
+      `/api/projects/${projectId}/tax/periods/${period}/exports/accountant-packet`,
+      `accountant-packet-${projectId}-${period}.xlsx`,
+    );
+    return createMockTaxExport(projectId, period, "accountant_packet", false);
+  }
+
+  return clone(
+    createMockTaxExport(
+      resolveMockTaxProjectId(projectId),
+      period,
+      "accountant_packet",
+    ),
+  );
+}
+
+export async function requestSelfFilingPacketExport(
+  projectId: string,
+  period: string,
+): Promise<TaxExportJob> {
+  if (isTaxApiEnabled) {
+    await downloadFile(
+      `/api/projects/${projectId}/tax/periods/${period}/exports/self-filing-packet`,
+      `self-filing-packet-${projectId}-${period}.xlsx`,
+    );
+    return createMockTaxExport(projectId, period, "self_filing_packet", false);
+  }
+
+  return clone(
+    createMockTaxExport(
+      resolveMockTaxProjectId(projectId),
+      period,
+      "self_filing_packet",
+    ),
+  );
 }

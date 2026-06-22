@@ -17,15 +17,6 @@ export const evidenceStatusLabel: Record<EvidenceStatus, string> = {
   verified: "확인 완료",
 };
 
-export const expenseStatusBadgeClass: Record<ExpenseStatus, string> = {
-  created: "bg-zinc-100 text-zinc-700 ring-1 ring-zinc-200",
-  processing: "bg-blue-50 text-blue-700 ring-1 ring-blue-100",
-  needs_review: "bg-amber-50 text-amber-800 ring-1 ring-amber-200",
-  approved: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100",
-  rejected: "bg-zinc-100 text-zinc-700 ring-1 ring-zinc-200",
-  exported: "bg-violet-50 text-violet-700 ring-1 ring-violet-100",
-};
-
 export const expenseStatusFilterOptions: Array<{
   value: ExpenseStatus | "all";
   label: string;

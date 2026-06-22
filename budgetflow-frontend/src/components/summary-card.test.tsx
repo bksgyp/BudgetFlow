@@ -19,16 +19,16 @@ describe("SummaryCard", () => {
       renderToStaticMarkup(
         <SummaryCard label="승인 금액" value="₩1" tone="success" />,
       ),
-    ).toContain("border-[var(--bf-support-success)]");
+    ).toContain("border-l-[var(--bf-support-success)]");
     expect(
       renderToStaticMarkup(
         <SummaryCard label="검토 필요" value="1건" tone="warning" />,
       ),
-    ).toContain("border-[var(--bf-support-warning)]");
+    ).toContain("border-l-[var(--bf-support-warning)]");
     expect(
       renderToStaticMarkup(
         <SummaryCard label="증빙 누락" value="1건" tone="danger" />,
       ),
-    ).toContain("border-[var(--bf-support-error)]");
+    ).toContain("border-l-[var(--bf-support-error)]");
   });
 });

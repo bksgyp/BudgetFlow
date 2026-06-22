@@ -34,7 +34,7 @@ export function LoginClient() {
     try {
       const session = await signIn(values);
       window.localStorage.setItem(sessionStorageKey, JSON.stringify(session));
-      router.push("/projects");
+      router.push("/home");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "로그인에 실패했습니다.");
     }
@@ -49,12 +49,17 @@ export function LoginClient() {
             <p className="text-xs font-bold uppercase text-[var(--bf-text-muted)]">
               Sign in
             </p>
-            <h1 className="mt-2 text-2xl font-bold text-[var(--bf-text-primary)]">
+            <h1 className="mt-2 text-2xl font-semibold text-[var(--bf-text-primary)]">
               BudgetFlow 로그인
             </h1>
             <p className="mt-2 text-sm leading-6 text-[var(--bf-text-secondary)]">
               관리자 계정으로 예산 정산 작업을 계속합니다.
             </p>
+          </div>
+
+          <div className="mb-5 rounded-lg border border-[var(--bf-support-info-border)] bg-[var(--bf-support-info-bg)] px-3 py-2.5 text-xs leading-5 text-[var(--bf-support-info-fg)]">
+            데모 계정이 입력되어 있습니다. 그대로 <b>로그인</b>하면 가이드
+            투어가 시작됩니다.
           </div>
 
           <form className="space-y-4" onSubmit={onSubmit}>
@@ -75,7 +80,7 @@ export function LoginClient() {
                 />
                 <button
                   aria-label={showPassword ? "비밀번호 숨기기" : "비밀번호 보기"}
-                  className="absolute right-0 top-0 inline-grid size-10 place-items-center rounded-md text-[var(--bf-text-secondary)] hover:bg-[var(--bf-layer-hover)] hover:text-[var(--bf-text-primary)] focus-visible:ring-3 focus-visible:ring-ring/50"
+                  className="absolute right-0 top-0 inline-grid size-11 place-items-center rounded-md text-[var(--bf-text-secondary)] hover:bg-[var(--bf-layer-hover)] hover:text-[var(--bf-text-primary)] focus-visible:ring-3 focus-visible:ring-ring/50"
                   onClick={() => setShowPassword((current) => !current)}
                   type="button"
                 >

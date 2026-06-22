@@ -14,12 +14,20 @@ import {
   getExportJobs,
   getProject,
   getProjects,
+  getTaxFeeImpact,
+  getTaxFindings,
+  getTaxPeriods,
+  getTaxReadiness,
   rejectExpense,
+  recalculateTaxPeriod,
+  requestAccountantPacketExport,
   requestExpenseReportExport,
+  requestSelfFilingPacketExport,
   uploadProjectTemplate,
   updateBudgetCategory,
+  updateExpenseTaxReview,
 } from "@/lib/api/budgetflow-api";
-import type { ExpenseStatus } from "@/lib/domain";
+import type { ExpenseStatus, TaxExpenseReview, TaxFindingType } from "@/lib/domain";
 import type {
   BudgetCategoryInput,
   BudgetCategoryUpdateInput,
@@ -45,6 +53,16 @@ export const budgetflowQueryKeys = {
   budgetCategories: (projectId: string) =>
     ["budget-categories", projectId] as const,
   exportJobs: (projectId: string) => ["export-jobs", projectId] as const,
+  taxPeriods: (projectId: string) => ["tax-periods", projectId] as const,
+  taxReadiness: (projectId: string, period: string) =>
+    ["tax-readiness", projectId, period] as const,
+  taxFindings: (
+    projectId: string,
+    period: string,
+    filter: TaxFindingType | "all" = "all",
+  ) => ["tax-findings", projectId, period, filter] as const,
+  taxFeeImpact: (projectId: string, period: string) =>
+    ["tax-fee-impact", projectId, period] as const,
 };
 
 export function useProjects() {
@@ -224,6 +242,122 @@ export function useRequestExpenseReportExport(projectId: string) {
   return useMutation({
     mutationFn: () => requestExpenseReportExport(projectId),
     onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: budgetflowQueryKeys.exportJobs(projectId),
+      });
+    },
+  });
+}
+
+export function useTaxPeriods(projectId: string) {
+  return useQuery({
+    queryKey: budgetflowQueryKeys.taxPeriods(projectId),
+    queryFn: () => getTaxPeriods(projectId),
+  });
+}
+
+export function useTaxReadiness(projectId: string, period: string) {
+  return useQuery({
+    enabled: Boolean(period),
+    queryKey: budgetflowQueryKeys.taxReadiness(projectId, period),
+    queryFn: () => getTaxReadiness(projectId, period),
+  });
+}
+
+export function useTaxFindings(
+  projectId: string,
+  period: string,
+  filter: TaxFindingType | "all" = "all",
+) {
+  return useQuery({
+    enabled: Boolean(period),
+    queryKey: budgetflowQueryKeys.taxFindings(projectId, period, filter),
+    queryFn: () => getTaxFindings(projectId, period, filter),
+  });
+}
+
+export function useTaxFeeImpact(projectId: string, period: string) {
+  return useQuery({
+    enabled: Boolean(period),
+    queryKey: budgetflowQueryKeys.taxFeeImpact(projectId, period),
+    queryFn: () => getTaxFeeImpact(projectId, period),
+  });
+}
+
+function invalidateTaxPeriodQueries(
+  queryClient: ReturnType<typeof useQueryClient>,
+  projectId: string,
+  period: string,
+) {
+  void queryClient.invalidateQueries({
+    queryKey: budgetflowQueryKeys.expensesByProject(projectId),
+  });
+  void queryClient.invalidateQueries({
+    queryKey: budgetflowQueryKeys.taxPeriods(projectId),
+  });
+  void queryClient.invalidateQueries({
+    queryKey: budgetflowQueryKeys.taxReadiness(projectId, period),
+  });
+  void queryClient.invalidateQueries({
+    queryKey: ["tax-findings", projectId, period],
+  });
+  void queryClient.invalidateQueries({
+    queryKey: budgetflowQueryKeys.taxFeeImpact(projectId, period),
+  });
+}
+
+export function useRecalculateTaxPeriod(projectId: string, period: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => recalculateTaxPeriod(projectId, period),
+    onSuccess: () => {
+      invalidateTaxPeriodQueries(queryClient, projectId, period);
+    },
+  });
+}
+
+export function useUpdateExpenseTaxReview(projectId: string, period: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: TaxExpenseReview) => updateExpenseTaxReview(input),
+    onSuccess: () => {
+      invalidateTaxPeriodQueries(queryClient, projectId, period);
+      void queryClient.invalidateQueries({
+        queryKey: budgetflowQueryKeys.expenseSummary(projectId),
+      });
+    },
+  });
+}
+
+export function useRequestAccountantPacketExport(
+  projectId: string,
+  period: string,
+) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => requestAccountantPacketExport(projectId, period),
+    onSuccess: () => {
+      invalidateTaxPeriodQueries(queryClient, projectId, period);
+      void queryClient.invalidateQueries({
+        queryKey: budgetflowQueryKeys.exportJobs(projectId),
+      });
+    },
+  });
+}
+
+export function useRequestSelfFilingPacketExport(
+  projectId: string,
+  period: string,
+) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => requestSelfFilingPacketExport(projectId, period),
+    onSuccess: () => {
+      invalidateTaxPeriodQueries(queryClient, projectId, period);
       void queryClient.invalidateQueries({
         queryKey: budgetflowQueryKeys.exportJobs(projectId),
       });

@@ -1,6 +1,19 @@
 const BASE_URL = process.env.NEXT_PUBLIC_BUDGETFLOW_API_BASE_URL ?? "";
 export const isApiConfigured = Boolean(BASE_URL);
 
+// 세무(TaxOps) 엔드포인트는 아직 백엔드에 구현되지 않았다.
+// 백엔드가 /tax/* API를 제공하기 전까지는 항상 프론트 mock 세무 데이터를 사용한다.
+// 백엔드 준비 후 NEXT_PUBLIC_BUDGETFLOW_TAX_API_ENABLED=true 로 전환한다.
+export const isTaxApiEnabled =
+  isApiConfigured &&
+  process.env.NEXT_PUBLIC_BUDGETFLOW_TAX_API_ENABLED === "true";
+
+// 데이터 소스 스위치. 백엔드가 미완인 현재는 기본 false → 항상 mock 데이터를 사용한다.
+// 백엔드가 준비되면 NEXT_PUBLIC_BUDGETFLOW_LIVE_DATA=true 로 실제 데이터로 전환한다.
+export const isLiveDataEnabled =
+  isApiConfigured &&
+  process.env.NEXT_PUBLIC_BUDGETFLOW_LIVE_DATA === "true";
+
 const TOKEN_KEY = "budgetflow.token";
 
 // snake_case → camelCase 재귀 변환 (PostgreSQL 컬럼명 대응)

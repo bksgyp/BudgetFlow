@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Pencil, Plus, Save, Upload } from "lucide-react";
 import { useForm } from "react-hook-form";
@@ -15,6 +16,11 @@ import {
 import { TextArea, TextInput } from "@/components/form-controls";
 import { FormField } from "@/components/form-field";
 import { SummaryCard } from "@/components/summary-card";
+import {
+  DashboardEmptyState,
+  DashboardErrorState,
+  DashboardLoadingState,
+} from "@/components/dashboard-states";
 import { Button } from "@/components/ui/button";
 import type {
   BudgetCategory,
@@ -61,13 +67,47 @@ const settingsTabs = [
 type SettingsTab = (typeof settingsTabs)[number]["id"];
 
 export function SettingsClient() {
-  const { selectedProjectId } = useSelectedProject();
+  const { selectedProjectId, isLoading, isError, refetch } = useSelectedProject();
 
-  if (!selectedProjectId) {
-    return null;
+  if (selectedProjectId) {
+    return <SettingsClientInner projectId={selectedProjectId} />;
   }
 
-  return <SettingsClientInner projectId={selectedProjectId} />;
+  if (isLoading) {
+    return (
+      <DashboardLoadingState
+        eyebrow="Settings"
+        lead="엑셀 양식, 컬럼 매핑, 예산 카테고리를 불러오는 중입니다."
+        title="엑셀 양식, 컬럼 매핑, 예산 카테고리"
+      />
+    );
+  }
+
+  if (isError) {
+    return (
+      <DashboardErrorState
+        eyebrow="Settings"
+        onRetry={refetch}
+        title="엑셀 양식, 컬럼 매핑, 예산 카테고리"
+      />
+    );
+  }
+
+  return (
+    <DashboardEmptyState
+      action={
+        <Button asChild>
+          <Link href="/projects">프로젝트 만들기</Link>
+        </Button>
+      }
+      eyebrow="Settings"
+      lead="설정을 변경하려면 먼저 프로젝트가 필요합니다."
+      title="엑셀 양식, 컬럼 매핑, 예산 카테고리"
+    >
+      선택된 프로젝트가 없습니다. 프로젝트를 만들거나 사이드바에서 프로젝트를
+      선택하세요.
+    </DashboardEmptyState>
+  );
 }
 
 function SettingsClientInner({ projectId }: { projectId: string }) {
@@ -158,8 +198,9 @@ function SettingsClientInner({ projectId }: { projectId: string }) {
           role="tablist"
           aria-label="설정 범주"
         >
-          {settingsTabs.map((tab) => (
+          {settingsTabs.map((tab, index) => (
             <button
+              aria-controls={`settings-panel-${tab.id}`}
               aria-selected={activeTab === tab.id}
               className={
                 activeTab === tab.id
@@ -169,7 +210,21 @@ function SettingsClientInner({ projectId }: { projectId: string }) {
               id={`settings-tab-${tab.id}`}
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
+              onKeyDown={(event) => {
+                const last = settingsTabs.length - 1;
+                let next = index;
+                if (event.key === "ArrowRight") next = index === last ? 0 : index + 1;
+                else if (event.key === "ArrowLeft") next = index === 0 ? last : index - 1;
+                else if (event.key === "Home") next = 0;
+                else if (event.key === "End") next = last;
+                else return;
+                event.preventDefault();
+                const nextTab = settingsTabs[next];
+                setActiveTab(nextTab.id);
+                document.getElementById(`settings-tab-${nextTab.id}`)?.focus();
+              }}
               role="tab"
+              tabIndex={activeTab === tab.id ? 0 : -1}
               type="button"
             >
               {tab.label}
@@ -179,7 +234,13 @@ function SettingsClientInner({ projectId }: { projectId: string }) {
       </Panel>
 
       <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="space-y-4">
+        <div
+          aria-labelledby={`settings-tab-${activeTab}`}
+          className="space-y-4"
+          id={`settings-panel-${activeTab}`}
+          role="tabpanel"
+          tabIndex={0}
+        >
           {activeTab === "template" ? (
             <TemplateUploadPanel
               project={projectQuery.data ?? null}
@@ -192,7 +253,7 @@ function SettingsClientInner({ projectId }: { projectId: string }) {
               <Panel className="bf-panel-pad">
                 <SectionToolbar>
                   <div>
-                    <h2 className="text-lg font-bold text-zinc-950">
+                    <h2 className="bf-panel-title">
                       예산 카테고리와 한도
                     </h2>
                     <p className="bf-helper mt-1">
@@ -214,9 +275,9 @@ function SettingsClientInner({ projectId }: { projectId: string }) {
                   />
                 </div>
 
-                <div className="mt-4 divide-y divide-zinc-100">
+                <div className="mt-4 divide-y divide-[var(--bf-border-subtle)]">
                   {categoriesQuery.isLoading ? (
-                    <p className="py-5 text-sm text-zinc-600">
+                    <p className="py-5 text-sm text-[var(--bf-text-secondary)]">
                       카테고리를 불러오는 중입니다.
                     </p>
                   ) : null}
@@ -245,7 +306,7 @@ function SettingsClientInner({ projectId }: { projectId: string }) {
                     </Button>
                   }
                 >
-                  <h2 className="text-lg font-bold text-zinc-950">
+                  <h2 className="bf-panel-title">
                     {selectedCategory ? "카테고리 수정" : "카테고리 추가"}
                   </h2>
                   <p className="bf-helper mt-1">
@@ -260,7 +321,7 @@ function SettingsClientInner({ projectId }: { projectId: string }) {
                       error={form.formState.errors.name?.message}
                     >
                       <TextInput
-                        placeholder="다과비"
+                        placeholder="예: 여비교통비"
                         {...form.register("name")}
                       />
                     </FormField>
@@ -281,23 +342,25 @@ function SettingsClientInner({ projectId }: { projectId: string }) {
                     error={form.formState.errors.keywordsText?.message}
                   >
                     <TextArea
-                      placeholder="간식, 커피, 음료"
+                      placeholder="예: 택시, 주유, 출장, KTX"
                       {...form.register("keywordsText")}
                     />
                   </FormField>
-                  <Button disabled={isMutating} type="submit">
-                    {isMutating ? (
-                      <Loader2
-                        className="animate-spin"
-                        data-icon="inline-start"
-                      />
-                    ) : selectedCategory ? (
-                      <Save data-icon="inline-start" />
-                    ) : (
-                      <Plus data-icon="inline-start" />
-                    )}
-                    {selectedCategory ? "수정 저장" : "추가"}
-                  </Button>
+                  <div className="flex justify-end">
+                    <Button disabled={isMutating} type="submit">
+                      {isMutating ? (
+                        <Loader2
+                          className="animate-spin"
+                          data-icon="inline-start"
+                        />
+                      ) : selectedCategory ? (
+                        <Save data-icon="inline-start" />
+                      ) : (
+                        <Plus data-icon="inline-start" />
+                      )}
+                      {selectedCategory ? "수정 저장" : "추가"}
+                    </Button>
+                  </div>
                 </form>
               </Panel>
             </>
@@ -307,7 +370,7 @@ function SettingsClientInner({ projectId }: { projectId: string }) {
             <Panel className="bf-panel-pad">
               <SectionToolbar>
                 <div>
-                  <h2 className="text-lg font-bold text-zinc-950">
+                  <h2 className="bf-panel-title">
                     분류 키워드
                   </h2>
                   <p className="bf-helper mt-1">
@@ -319,11 +382,11 @@ function SettingsClientInner({ projectId }: { projectId: string }) {
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 {(categoriesQuery.data ?? []).map((category) => (
                   <div
-                    className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-3"
+                    className="rounded-lg border border-[var(--bf-border-subtle)] bg-[var(--bf-layer-02)] px-3 py-3"
                     key={category.id}
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <strong className="text-sm text-zinc-950">
+                      <strong className="text-sm font-semibold text-[var(--bf-text-primary)]">
                         {category.name}
                       </strong>
                       <StatusBadge
@@ -334,7 +397,7 @@ function SettingsClientInner({ projectId }: { projectId: string }) {
                         {category.remainingAmount < 0 ? "초과" : "사용 가능"}
                       </StatusBadge>
                     </div>
-                    <p className="mt-2 text-sm leading-6 text-zinc-600">
+                    <p className="mt-2 text-sm leading-6 text-[var(--bf-text-secondary)]">
                       {category.keywords.join(", ")}
                     </p>
                   </div>
@@ -346,7 +409,7 @@ function SettingsClientInner({ projectId }: { projectId: string }) {
 
         <aside className="space-y-4">
           <Panel className="bf-panel-pad">
-            <h2 className="text-lg font-bold text-zinc-950">검토 필요 정책</h2>
+            <h2 className="bf-panel-title">검토 필요 정책</h2>
             <div className="mt-4 flex flex-wrap gap-2">
               {reviewPolicies.map((policy) => (
                 <StatusBadge
@@ -360,7 +423,7 @@ function SettingsClientInner({ projectId }: { projectId: string }) {
           </Panel>
 
           <Panel className="bf-panel-pad">
-            <h2 className="text-lg font-bold text-zinc-950">
+            <h2 className="bf-panel-title">
               엑셀 생성 전 확인
             </h2>
             <div className="mt-4 space-y-3">
@@ -370,7 +433,7 @@ function SettingsClientInner({ projectId }: { projectId: string }) {
                 "검토 필요 항목은 생성 파일에서 제외된다는 경고를 확인합니다.",
               ].map((item) => (
                 <p
-                  className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm leading-6 text-zinc-700"
+                  className="rounded-lg border border-[var(--bf-border-subtle)] bg-[var(--bf-layer-02)] px-3 py-2 text-sm leading-6 text-[var(--bf-text-secondary)]"
                   key={item}
                 >
                   {item}
@@ -380,17 +443,17 @@ function SettingsClientInner({ projectId }: { projectId: string }) {
           </Panel>
 
           <Panel className="bf-panel-pad">
-            <h2 className="text-lg font-bold text-zinc-950">분류 키워드</h2>
+            <h2 className="bf-panel-title">분류 키워드</h2>
             <div className="mt-4 space-y-2">
               {(categoriesQuery.data ?? []).map((category) => (
                 <div
-                  className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2"
+                  className="rounded-lg border border-[var(--bf-border-subtle)] bg-[var(--bf-layer-02)] px-3 py-2"
                   key={category.id}
                 >
-                  <strong className="text-sm text-zinc-950">
+                  <strong className="text-sm font-semibold text-[var(--bf-text-primary)]">
                     {category.name}
                   </strong>
-                  <p className="mt-1 text-sm leading-6 text-zinc-600">
+                  <p className="mt-1 text-sm leading-6 text-[var(--bf-text-secondary)]">
                     {category.keywords.join(", ")}
                   </p>
                 </div>
@@ -489,11 +552,11 @@ function TemplateUploadPanel({
       <SectionToolbar
         actions={
           <div className="flex flex-col gap-2 sm:min-w-80">
-            <label className="flex min-h-10 cursor-pointer items-center justify-between gap-3 rounded-lg border border-zinc-200 bg-white px-3 text-sm hover:bg-zinc-50">
-              <span className="truncate text-zinc-600">
+            <label className="flex min-h-10 cursor-pointer items-center justify-between gap-3 rounded-lg border border-[var(--bf-border-subtle)] bg-[var(--bf-layer-01)] px-3 text-sm hover:bg-[var(--bf-layer-hover)]">
+              <span className="truncate text-[var(--bf-text-secondary)]">
                 {fileName || "엑셀 파일을 선택하세요"}
               </span>
-              <span className="shrink-0 rounded-md bg-zinc-100 px-2 py-1 text-xs font-semibold text-zinc-700">
+              <span className="shrink-0 rounded-md bg-[var(--bf-layer-selected)] px-2 py-1 text-xs font-semibold text-[var(--bf-primary-active)]">
                 파일 선택
               </span>
               <input
@@ -520,19 +583,19 @@ function TemplateUploadPanel({
           </div>
         }
       >
-        <h2 className="text-lg font-bold text-zinc-950">엑셀 양식 업로드</h2>
+        <h2 className="bf-panel-title">엑셀 양식 업로드</h2>
         <p className="bf-helper mt-1">
           {project?.templateFileName ?? "양식 파일 미등록"} ·{" "}
           {templateMappingStatusLabel(mappingStatus)}
         </p>
-        <p className="mt-3 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm leading-6 text-zinc-700">
+        <p className="mt-3 rounded-lg border border-[var(--bf-border-subtle)] bg-[var(--bf-layer-02)] px-3 py-2 text-sm leading-6 text-[var(--bf-text-secondary)]">
           양식 파일과 컬럼 매핑이 모두 확정되어야 제출용 엑셀 생성 버튼이
           명확하게 활성화됩니다.
         </p>
       </SectionToolbar>
 
       {error ? (
-        <p className="mt-3 text-sm font-medium text-red-700">{error}</p>
+        <p className="mt-3 text-sm font-medium text-[var(--bf-support-error-fg)]">{error}</p>
       ) : null}
 
       <div className="mt-5">
@@ -556,7 +619,7 @@ function TemplateUploadPanel({
             </Button>
           }
         >
-          <h3 className="font-bold text-zinc-950">LLM 컬럼 매핑 추천</h3>
+          <h3 className="bf-section-title">LLM 컬럼 매핑 추천</h3>
           <p className="bf-helper mt-1">
             추천값은 관리자 확정 전까지 제출용 엑셀 생성에 사용하지 않습니다.
           </p>
@@ -565,7 +628,7 @@ function TemplateUploadPanel({
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
           {visibleMappings.map((mapping) => (
             <div
-              className="flex items-center justify-between gap-3 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm"
+              className="flex items-center justify-between gap-3 rounded-lg border border-[var(--bf-border-subtle)] bg-[var(--bf-layer-02)] px-3 py-2 text-sm"
               key={`${mapping.sourceColumn}-${mapping.targetField}`}
             >
               <span className="min-w-0">
@@ -606,16 +669,16 @@ function CategoryRow({
       : "approved";
 
   return (
-    <article className={isSelected ? "bg-zinc-950/[0.04] py-4" : "py-4"}>
+    <article className={isSelected ? "rounded-lg bg-[var(--bf-layer-hover)] px-3 py-4" : "py-4"}>
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="font-bold text-zinc-950">{category.name}</h3>
+            <h3 className="bf-section-title">{category.name}</h3>
             <StatusBadge tone={tone}>
               {isOverBudget ? "초과" : usageWidth >= 80 ? "주의" : "정상"}
             </StatusBadge>
           </div>
-          <p className="mt-1 text-sm leading-6 text-zinc-600">
+          <p className="mt-1 text-sm leading-6 text-[var(--bf-text-secondary)]">
             {category.keywords.join(", ")}
           </p>
         </div>
@@ -627,13 +690,13 @@ function CategoryRow({
 
       <div className="mt-3 space-y-2">
         <div className="flex flex-wrap justify-between gap-2 text-sm">
-          <span className="font-semibold text-zinc-700">
+          <span className="font-semibold text-[var(--bf-text-primary)]">
             {formatCurrency(category.approvedAmount)} /{" "}
             {formatCurrency(category.budgetLimit)}
           </span>
           <span
             className={
-              isOverBudget ? "font-semibold text-red-700" : "font-semibold"
+              isOverBudget ? "font-semibold text-[var(--bf-support-error-fg)]" : "font-semibold"
             }
           >
             잔액 {formatCurrency(category.remainingAmount)}
