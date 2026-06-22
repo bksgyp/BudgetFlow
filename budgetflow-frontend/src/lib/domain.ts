@@ -163,6 +163,7 @@ export type Expense = {
   ocrQuality?: OcrQuality | null;
   ocrFailureMode?: OcrFailureMode | null;
   taxPeriod?: string | null;
+  receiptImageUrl?: string | null;
   createdAt: string;
   updatedAt: string;
 };

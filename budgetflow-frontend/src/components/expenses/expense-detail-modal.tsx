@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { AlertTriangle, Check, CircleX } from "lucide-react";
+import { AlertTriangle, Check, CircleX, ExternalLink, ImageOff } from "lucide-react";
 import { useForm } from "react-hook-form";
 
 import { StatusBadge } from "@/components/budgetflow-ui";
@@ -146,6 +146,50 @@ export function ExpenseDetailModal({
                       {evidenceStatusLabel[expense.evidenceStatus]}
                     </StatusBadge>
                   </div>
+                </div>
+
+                <div className="rounded-lg border border-[var(--bf-border-subtle)] bg-[var(--bf-layer-02)] p-3">
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <span className="text-sm font-semibold text-[var(--bf-text-primary)]">
+                      영수증 이미지
+                    </span>
+                    {expense.receiptImageUrl ? (
+                      <a
+                        className="inline-flex items-center gap-1 text-xs font-medium text-[var(--bf-primary)] hover:underline"
+                        href={expense.receiptImageUrl}
+                        rel="noreferrer"
+                        target="_blank"
+                      >
+                        <ExternalLink className="size-3.5" />
+                        새 탭에서 열기
+                      </a>
+                    ) : null}
+                  </div>
+                  {expense.receiptImageUrl ? (
+                    <a
+                      aria-label={`${expense.merchant} 영수증 원본 보기`}
+                      className="block overflow-hidden rounded-md border border-[var(--bf-border-subtle)] bg-white outline-none focus-visible:ring-3 focus-visible:ring-ring/20"
+                      href={expense.receiptImageUrl}
+                      rel="noreferrer"
+                      target="_blank"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        alt={`${expense.merchant} 영수증`}
+                        className="mx-auto max-h-72 w-auto object-contain"
+                        src={expense.receiptImageUrl}
+                      />
+                    </a>
+                  ) : (
+                    <div className="flex min-h-32 flex-col items-center justify-center gap-1.5 rounded-md border border-dashed border-[var(--bf-border-subtle)] text-center">
+                      <ImageOff className="size-6 text-[var(--bf-text-muted)]" />
+                      <p className="text-xs text-[var(--bf-text-secondary)]">
+                        {expense.evidenceStatus === "none"
+                          ? "첨부된 영수증이 없습니다."
+                          : "영수증 이미지를 불러올 수 없습니다."}
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 <form

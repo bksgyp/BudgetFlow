@@ -106,6 +106,7 @@ export const mockExpenses: Expense[] = [
     aiConfidence: 0.94,
     missingFields: [],
     reviewReason: null,
+    receiptImageUrl: "/sample-receipt.svg",
     createdAt: "2026-05-12T21:12:00+09:00",
     updatedAt: "2026-05-12T21:16:00+09:00",
   },
