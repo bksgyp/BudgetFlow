@@ -10,7 +10,7 @@ describe("form controls", () => {
     );
 
     expect(html).toContain("name=\"email\"");
-    expect(html).toContain("h-10");
+    expect(html).toContain("h-8");
     expect(html).toContain("focus-visible:border-ring");
   });
 

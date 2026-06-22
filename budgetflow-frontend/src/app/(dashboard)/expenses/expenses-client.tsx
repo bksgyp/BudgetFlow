@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   AlertTriangle,
   Download,
@@ -26,6 +28,11 @@ import { ApprovalConfirmDialog } from "@/components/expenses/approval-confirm-di
 import { ExpenseDetailModal } from "@/components/expenses/expense-detail-modal";
 import { TextInput } from "@/components/form-controls";
 import { SummaryCard } from "@/components/summary-card";
+import {
+  DashboardEmptyState,
+  DashboardErrorState,
+  DashboardLoadingState,
+} from "@/components/dashboard-states";
 import { Button } from "@/components/ui/button";
 import type { Expense, ExpenseStatus, ExportJob, Project } from "@/lib/domain";
 import {
@@ -50,22 +57,70 @@ import {
 } from "@/lib/status";
 import { evidenceStatusTone, expenseStatusTone } from "@/lib/status-tone";
 
-export function ExpensesClient() {
-  const { selectedProjectId } = useSelectedProject();
+export function ExpensesClient({
+  projectId: routeProjectId,
+}: {
+  projectId?: string;
+}) {
+  const { selectedProjectId, setSelectedProjectId, isLoading, isError, refetch } =
+    useSelectedProject();
+  const searchParams = useSearchParams();
+  const queryProjectId = searchParams.get("projectId");
+  const projectId = routeProjectId ?? queryProjectId ?? selectedProjectId;
 
-  if (!selectedProjectId) {
-    return null;
+  useEffect(() => {
+    if (projectId && projectId !== selectedProjectId) {
+      setSelectedProjectId(projectId);
+    }
+  }, [projectId, selectedProjectId, setSelectedProjectId]);
+
+  if (projectId) {
+    return <ExpensesClientInner projectId={projectId} />;
   }
 
-  return <ExpensesClientInner projectId={selectedProjectId} />;
+  if (isLoading) {
+    return (
+      <DashboardLoadingState
+        eyebrow="Expenses"
+        lead="Slack 입력은 5초 간격으로 반영됩니다. 검토 사유 확인 후 승인 또는 반려합니다."
+        title="지출 목록과 관리자 검토"
+      />
+    );
+  }
+
+  if (isError) {
+    return (
+      <DashboardErrorState
+        eyebrow="Expenses"
+        onRetry={refetch}
+        title="지출 목록과 관리자 검토"
+      />
+    );
+  }
+
+  return (
+    <DashboardEmptyState
+      action={
+        <Button asChild>
+          <Link href="/projects">프로젝트 만들기</Link>
+        </Button>
+      }
+      eyebrow="Expenses"
+      lead="지출을 보려면 먼저 프로젝트가 필요합니다."
+      title="지출 목록과 관리자 검토"
+    >
+      선택된 프로젝트가 없습니다. 프로젝트를 만들거나 사이드바에서 프로젝트를
+      선택하세요.
+    </DashboardEmptyState>
+  );
 }
 
 function ExpensesClientInner({ projectId }: { projectId: string }) {
   const [status, setStatus] = useState<ExpenseStatus | "all">("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedExpenseId, setSelectedExpenseId] = useState<
-    string | null | undefined
-  >(null);
+  const [selectedExpenseId, setSelectedExpenseId] = useState<string | null>(
+    null,
+  );
   const [confirmVariant, setConfirmVariant] = useState<
     "close" | "export" | null
   >(null);
@@ -123,19 +178,15 @@ function ExpensesClientInner({ projectId }: { projectId: string }) {
 
     return counts;
   }, [allExpenses]);
-  const firstRiskyExpenseId = useMemo(() => {
-    return (
-      visibleExpenses.find((expense) => expense.evidenceStatus === "none") ??
-      visibleExpenses.find((expense) => expense.status === "needs_review") ??
-      visibleExpenses[0]
-    )?.id;
-  }, [visibleExpenses]);
-  const effectiveSelectedExpenseId =
-    selectedExpenseId === undefined ? firstRiskyExpenseId : selectedExpenseId;
+  const effectiveSelectedExpenseId = selectedExpenseId;
   const selectedExpense =
-    visibleExpenses.find(
-      (expense) => expense.id === effectiveSelectedExpenseId,
-    ) ?? null;
+    allExpenses.find((expense) => expense.id === selectedExpenseId) ?? null;
+  const detailExpense =
+    selectedExpense ??
+    visibleExpenses.find((expense) => expense.evidenceStatus === "none") ??
+    visibleExpenses.find((expense) => expense.status === "needs_review") ??
+    visibleExpenses[0] ??
+    null;
   const latestCompletedExport =
     exportJobsQuery.data?.find(
       (exportJob) => exportJob.status === "completed",
@@ -235,14 +286,14 @@ function ExpensesClientInner({ projectId }: { projectId: string }) {
           </PriorityStep>
         </PriorityStrip>
 
-        <section className="grid min-w-0 gap-4">
+        <section className="grid min-w-0 gap-4 min-[1400px]:grid-cols-[minmax(0,1fr)_320px] 2xl:grid-cols-[minmax(0,1fr)_360px]">
           <div className="min-w-0 space-y-4">
             <Panel data-tour="expense-list">
-              <div className="space-y-3 border-b border-zinc-200 p-4">
+              <div className="space-y-3 border-b border-[var(--bf-border-subtle)] p-4">
                 <SectionToolbar
                   actions={
                     <label className="relative w-full sm:w-72">
-                      <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-zinc-400" />
+                      <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[var(--bf-text-muted)]" />
                       <TextInput
                         aria-label="지출 검색"
                         className="h-9 pl-9"
@@ -263,14 +314,15 @@ function ExpensesClientInner({ projectId }: { projectId: string }) {
                     value={status}
                   />
                 </SectionToolbar>
-                <p className="text-xs font-medium text-zinc-500">
-                  {visibleExpenses.length}건 표시 · 위험 항목은 먼저 선택됩니다.
+                <p className="text-xs font-medium text-[var(--bf-text-secondary)]">
+                  {visibleExpenses.length}건 표시 · 항목을 누르면 상세 검토
+                  모달이 열립니다.
                 </p>
               </div>
 
               <div className="hidden overflow-x-auto md:block">
-                <table className="w-full min-w-[820px] text-left text-sm">
-                  <thead className="border-b border-zinc-200 bg-zinc-50 text-xs text-zinc-500">
+                <table className="w-full min-w-[760px] text-left text-sm">
+                  <thead className="border-b border-[var(--bf-border-subtle)] bg-[var(--bf-layer-02)] text-xs text-[var(--bf-text-secondary)]">
                     <tr>
                       <th className="px-4 py-3 font-semibold">날짜</th>
                       <th className="px-4 py-3 font-semibold">사용처 / 내용</th>
@@ -287,7 +339,7 @@ function ExpensesClientInner({ projectId }: { projectId: string }) {
                     {expensesQuery.isLoading ? (
                       <tr>
                         <td
-                          className="px-4 py-8 text-center text-zinc-600"
+                          className="px-4 py-8 text-center text-[var(--bf-text-secondary)]"
                           colSpan={7}
                         >
                           지출 내역을 불러오는 중입니다.
@@ -310,7 +362,7 @@ function ExpensesClientInner({ projectId }: { projectId: string }) {
                     {visibleExpenses.length === 0 ? (
                       <tr>
                         <td
-                          className="px-4 py-8 text-center text-zinc-600"
+                          className="px-4 py-8 text-center text-[var(--bf-text-secondary)]"
                           colSpan={7}
                         >
                           조건에 맞는 지출 내역이 없습니다.
@@ -321,7 +373,7 @@ function ExpensesClientInner({ projectId }: { projectId: string }) {
                 </table>
               </div>
 
-              <div className="divide-y divide-zinc-100 md:hidden">
+              <div className="divide-y divide-[var(--bf-border-subtle)] md:hidden">
                 <AnimatedExpenseList listKey={`${status}-${searchQuery}`}>
                   {visibleExpenses.map((expense) => (
                     <ExpenseMobileCard
@@ -355,6 +407,17 @@ function ExpensesClientInner({ projectId }: { projectId: string }) {
               project={projectQuery.data ?? null}
             />
           </div>
+          <ExpenseReviewContextPanel
+            categoryName={
+              detailExpense
+                ? categoryNameById.get(detailExpense.categoryId) ?? "미분류"
+                : "미분류"
+            }
+            expense={detailExpense}
+            onOpenDetail={() => {
+              if (detailExpense) setSelectedExpenseId(detailExpense.id);
+            }}
+          />
         </section>
       </section>
 
@@ -409,30 +472,29 @@ function ExpenseTableRow({
 
   return (
     <tr
-      aria-label={`${expense.merchant} 지출 상세 보기`}
-      aria-pressed={isSelected}
+      aria-selected={isSelected}
       className={
         isSelected
           ? "cursor-pointer border-b border-[var(--bf-border-subtle)] bg-[var(--bf-layer-selected)] ring-1 ring-inset ring-black/10"
           : `cursor-pointer border-b border-[var(--bf-border-subtle)] transition-colors ${rowTone}`
       }
       onClick={onSelect}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          onSelect();
-        }
-      }}
-      role="button"
-      tabIndex={0}
     >
       <td className="whitespace-nowrap px-4 py-3">
         {formatDate(expense.date)}
       </td>
       <td className="max-w-[300px] px-4 py-3">
-        <div className="font-semibold text-[var(--bf-text-primary)]">
+        <button
+          aria-label={`${expense.merchant} 지출 상세 열기`}
+          className="block max-w-full truncate rounded-md text-left font-semibold text-[var(--bf-text-primary)] transition-colors hover:text-[var(--bf-primary-hover)] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[var(--bf-focus)]/20"
+          onClick={(event) => {
+            event.stopPropagation();
+            onSelect();
+          }}
+          type="button"
+        >
           {expense.merchant}
-        </div>
+        </button>
         <p className="mt-1 truncate text-[var(--bf-text-secondary)]">
           {expense.description}
         </p>
@@ -449,7 +511,7 @@ function ExpenseTableRow({
         </StatusBadge>
       </td>
       <td className="px-4 py-3">{categoryName}</td>
-      <td className="px-4 py-3 text-right font-bold tabular-nums">
+      <td className="px-4 py-3 text-right font-semibold tabular-nums">
         {formatCurrency(expense.amount)}
       </td>
       <td className="px-4 py-3">{expense.payerName}</td>
@@ -510,7 +572,7 @@ function ExportControls({
           </>
         }
       >
-        <h2 className="text-lg font-bold text-zinc-950">
+        <h2 className="bf-panel-title">
           정산 마감 및 엑셀 생성
         </h2>
         <p className="bf-helper mt-1">
@@ -557,6 +619,95 @@ function ExportControls({
   );
 }
 
+function ExpenseReviewContextPanel({
+  categoryName,
+  expense,
+  onOpenDetail,
+}: {
+  categoryName: string;
+  expense: Expense | null;
+  onOpenDetail: () => void;
+}) {
+  return (
+    <aside className="hidden min-w-0 min-[1400px]:block">
+      <div className="sticky top-7 space-y-4">
+        <Panel className="p-4">
+          {expense ? (
+            <>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <StatusBadge tone={expenseStatusTone[expense.status]}>
+                    {expenseStatusLabel[expense.status]}
+                  </StatusBadge>
+                  <h2 className="mt-3 truncate text-base font-semibold text-[var(--bf-text-primary)]">
+                    {expense.merchant} 상세 검토
+                  </h2>
+                  <p className="mt-1 line-clamp-2 text-sm leading-6 text-[var(--bf-text-secondary)]">
+                    {expense.description}
+                  </p>
+                </div>
+                <StatusBadge tone={evidenceStatusTone[expense.evidenceStatus]}>
+                  {evidenceStatusLabel[expense.evidenceStatus]}
+                </StatusBadge>
+              </div>
+
+              <dl className="mt-4 grid gap-3 text-sm">
+                <ExpenseInfoRow label="날짜" value={formatDate(expense.date)} />
+                <ExpenseInfoRow label="결제자" value={expense.payerName} />
+                <ExpenseInfoRow label="카테고리" value={categoryName} />
+                <ExpenseInfoRow
+                  label="금액"
+                  value={formatCurrency(expense.amount)}
+                />
+                <ExpenseInfoRow
+                  label="AI 신뢰도"
+                  value={`${Math.round(expense.aiConfidence * 100)}%`}
+                />
+              </dl>
+
+              {expense.reviewReason ? (
+                <div className="mt-4 rounded-lg border border-[var(--bf-support-warning-border)] bg-[var(--bf-support-warning-bg)] p-3">
+                  <div className="flex gap-2">
+                    <AlertTriangle className="mt-0.5 size-4 shrink-0 text-[var(--bf-support-warning-fg)]" />
+                    <p className="text-sm leading-6 text-[var(--bf-text-primary)]">
+                      {expense.reviewReason}
+                    </p>
+                  </div>
+                </div>
+              ) : null}
+
+              <Button className="mt-4 w-full" onClick={onOpenDetail}>
+                상세 모달 열기
+              </Button>
+            </>
+          ) : (
+            <div className="py-8 text-center">
+              <StatusBadge>대기</StatusBadge>
+              <h2 className="mt-3 text-base font-semibold text-[var(--bf-text-primary)]">
+                검토할 지출이 없습니다
+              </h2>
+              <p className="mt-1 text-sm leading-6 text-[var(--bf-text-secondary)]">
+                필터를 바꾸거나 Slack 접수 후 다시 확인하세요.
+              </p>
+            </div>
+          )}
+        </Panel>
+      </div>
+    </aside>
+  );
+}
+
+function ExpenseInfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3 border-b border-[var(--bf-border-subtle)] pb-2 last:border-b-0 last:pb-0">
+      <dt className="text-[var(--bf-text-secondary)]">{label}</dt>
+      <dd className="text-right font-semibold text-[var(--bf-text-primary)]">
+        {value}
+      </dd>
+    </div>
+  );
+}
+
 function LastUpdatedLabel({
   dataUpdatedAt,
   isRefreshing,
@@ -577,7 +728,7 @@ function LastUpdatedLabel({
     : "아직 갱신 전";
 
   return (
-    <span className="inline-flex h-10 items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 text-sm font-medium text-zinc-600">
+    <span className="inline-flex h-10 items-center gap-2 rounded-lg border border-[var(--bf-border-subtle)] bg-[var(--bf-layer-01)] px-3 text-sm font-medium text-[var(--bf-text-secondary)]">
       {isRefreshing ? (
         <Loader2 className="size-4 animate-spin" />
       ) : (
@@ -604,12 +755,12 @@ function ExpenseMobileCard({
       aria-pressed={isSelected}
       className={
         isSelected
-          ? "block w-full bg-[var(--bf-layer-selected)] p-4 text-left"
+          ? "block min-h-11 w-full bg-[var(--bf-layer-selected)] p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[var(--bf-focus)]/20"
           : expense.evidenceStatus === "none"
-            ? "block w-full bg-[var(--bf-row-missing)] p-4 text-left"
+            ? "block min-h-11 w-full bg-[var(--bf-row-missing)] p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[var(--bf-focus)]/20"
             : expense.status === "needs_review"
-              ? "block w-full bg-[var(--bf-row-review)] p-4 text-left"
-              : "block w-full bg-[var(--bf-layer-01)] p-4 text-left"
+              ? "block min-h-11 w-full bg-[var(--bf-row-review)] p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[var(--bf-focus)]/20"
+              : "block min-h-11 w-full bg-[var(--bf-layer-01)] p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-[var(--bf-focus)]/20"
       }
       onClick={onSelect}
       type="button"
@@ -619,14 +770,14 @@ function ExpenseMobileCard({
           <p className="text-xs font-medium text-[var(--bf-text-muted)]">
             {formatDate(expense.date)}
           </p>
-          <h3 className="mt-1 truncate text-base font-bold text-[var(--bf-text-primary)]">
+          <h3 className="mt-1 truncate text-base font-semibold text-[var(--bf-text-primary)]">
             {expense.merchant}
           </h3>
           <p className="mt-1 line-clamp-2 text-sm leading-6 text-[var(--bf-text-secondary)]">
             {expense.description}
           </p>
         </div>
-        <p className="shrink-0 text-right text-base font-bold tabular-nums">
+        <p className="shrink-0 text-right text-base font-semibold tabular-nums">
           {formatCurrency(expense.amount)}
         </p>
       </div>

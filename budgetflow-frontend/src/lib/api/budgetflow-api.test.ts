@@ -83,18 +83,20 @@ describe("BudgetFlow mock API", () => {
 
     expect(summary.totalExpenseCount).toBe(6);
     expect(summary.needsReviewCount).toBe(2);
-    expect(summary.approvedAmount).toBe(338_500);
+    expect(summary.approvedAmount).toBe(538_500);
     expect(summary.missingEvidenceCount).toBe(1);
   });
 
   it("returns budget categories with usage derived from approved expenses", async () => {
     const categories = await getBudgetCategories("project-aingthon");
-    const food = categories.find((category) => category.name === "식비");
+    const food = categories.find(
+      (category) => category.name === "기업업무추진비",
+    );
 
     expect(food).toMatchObject({
-      budgetLimit: 500_000,
-      approvedAmount: 286_000,
-      remainingAmount: 214_000,
+      budgetLimit: 800_000,
+      approvedAmount: 158_000,
+      remainingAmount: 642_000,
     });
   });
 
@@ -136,13 +138,13 @@ describe("BudgetFlow mock API", () => {
   it("uploads an excel template and suggests column mappings", async () => {
     const result = await uploadProjectTemplate({
       projectId: "project-aingthon",
-      fileName: "AINGTHON_최종_정산서.xlsx",
+      fileName: "법인운영비_최종_정산서.xlsx",
     });
     const project = await getProject("project-aingthon");
 
     expect(result).toMatchObject({
       projectId: "project-aingthon",
-      fileName: "AINGTHON_최종_정산서.xlsx",
+      fileName: "법인운영비_최종_정산서.xlsx",
       uploadStatus: "uploaded",
       mappingStatus: "suggested",
     });
@@ -150,7 +152,7 @@ describe("BudgetFlow mock API", () => {
       expect.arrayContaining(["date", "amount", "category"]),
     );
     expect(project).toMatchObject({
-      templateFileName: "AINGTHON_최종_정산서.xlsx",
+      templateFileName: "법인운영비_최종_정산서.xlsx",
       templateMappingStatus: "suggested",
     });
   });
@@ -158,7 +160,7 @@ describe("BudgetFlow mock API", () => {
   it("confirms suggested template mappings", async () => {
     const upload = await uploadProjectTemplate({
       projectId: "project-aingthon",
-      fileName: "AINGTHON_확정_정산서.xlsx",
+      fileName: "법인운영비_확정_정산서.xlsx",
     });
     const confirmed = await confirmTemplateMapping({
       projectId: "project-aingthon",
@@ -192,14 +194,14 @@ describe("BudgetFlow mock API", () => {
       date: "2026-05-15",
       amount: 84_000,
       categoryId: "cat-supply",
-      description: "명찰과 운영 문구류 최종 확인",
+      description: "사무용품 구매 최종 확인",
     });
 
     expect(approved).toMatchObject({
       id: "exp-005",
       date: "2026-05-15",
       amount: 84_000,
-      description: "명찰과 운영 문구류 최종 확인",
+      description: "사무용품 구매 최종 확인",
       status: "approved",
       reviewReason: null,
     });

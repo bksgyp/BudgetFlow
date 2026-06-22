@@ -1,5 +1,3 @@
-@import url("https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:ital,wght@0,400..700;1,400..700&family=Hanken+Grotesk:ital,wght@0,100..900;1,100..900&family=IBM+Plex+Mono:wght@400;500;600&display=swap");
-@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css");
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -9,11 +7,14 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-display: "Schibsted Grotesk", "Pretendard", system-ui, sans-serif;
+  --font-display:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, "Noto Sans KR", "Apple SD Gothic Neo", sans-serif;
   --font-sans:
-    "Hanken Grotesk", "Pretendard", system-ui, -apple-system, sans-serif;
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, "Noto Sans KR", "Apple SD Gothic Neo", sans-serif;
   --font-mono:
-    "IBM Plex Mono", "Pretendard", ui-monospace, "SFMono-Regular", monospace;
+    "SFMono-Regular", Consolas, "Liberation Mono", "Noto Sans KR", monospace;
   --font-heading: var(--font-display);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -54,130 +55,116 @@
 }
 
 :root {
-  /* ── shadcn semantic variables → BudgetFlow palette ── */
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0.01 235); /* slate-900 */
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0.01 235);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0.01 235);
-  --primary: oklch(0.426 0.085 173.5); /* teal-600 #126B5D */
-  --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.955 0.006 235); /* slate-100 */
-  --secondary-foreground: oklch(0.145 0.01 235);
-  --muted: oklch(0.955 0.006 235); /* slate-100 */
-  --muted-foreground: oklch(0.4 0.012 235); /* slate-600 */
-  --accent: oklch(0.975 0.015 173); /* teal-50 */
-  --accent-foreground: oklch(0.37 0.075 173); /* teal-700 */
-  --destructive: oklch(0.55 0.18 24); /* error #C8443B */
-  --border: oklch(0.912 0.008 235); /* slate-200 */
-  --input: oklch(0.912 0.008 235);
-  --ring: oklch(0.426 0.085 173.5); /* teal-600 */
-  --chart-1: oklch(0.426 0.085 173.5);
-  --chart-2: oklch(0.55 0.18 24);
-  --chart-3: oklch(0.58 0.1 80);
-  --chart-4: oklch(0.4 0.12 250);
-  --chart-5: oklch(0.4 0.012 235);
-  --radius: 0.5rem;
+  --background: #f5f5f5;
+  --foreground: #000000e0;
+  --card: #ffffff;
+  --card-foreground: #000000e0;
+  --popover: #ffffff;
+  --popover-foreground: #000000e0;
+  --primary: #1677ff;
+  --primary-foreground: #ffffff;
+  --secondary: #fafafa;
+  --secondary-foreground: #000000e0;
+  --muted: #fafafa;
+  --muted-foreground: #000000a6;
+  --accent: #e6f4ff;
+  --accent-foreground: #0958d9;
+  --destructive: #ff4d4f;
+  --border: #d9d9d9;
+  --input: #d9d9d9;
+  --ring: #1677ff;
+  --chart-1: #1677ff;
+  --chart-2: #52c41a;
+  --chart-3: #faad14;
+  --chart-4: #ff4d4f;
+  --chart-5: #000000a6;
+  --radius: 0.375rem;
   --font-sans:
-    "Hanken Grotesk", "Pretendard", system-ui, -apple-system, sans-serif;
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, "Noto Sans KR", "Apple SD Gothic Neo", sans-serif;
   --font-mono:
-    "IBM Plex Mono", "Pretendard", ui-monospace, "SFMono-Regular", monospace;
-  --sidebar: oklch(0.978 0.005 235); /* slate-50 */
-  --sidebar-foreground: oklch(0.145 0.01 235);
-  --sidebar-primary: oklch(0.426 0.085 173.5);
-  --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.975 0.015 173);
-  --sidebar-accent-foreground: oklch(0.37 0.075 173);
-  --sidebar-border: oklch(0.912 0.008 235);
-  --sidebar-ring: oklch(0.426 0.085 173.5);
+    "SFMono-Regular", Consolas, "Liberation Mono", "Noto Sans KR", monospace;
+  --sidebar: #001529;
+  --sidebar-foreground: #ffffffd9;
+  --sidebar-primary: #1677ff;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: rgb(255 255 255 / 0.08);
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgb(255 255 255 / 0.12);
+  --sidebar-ring: #69b1ff;
 
-  /* ── BudgetFlow design tokens ── */
-  --teal-50: #eff8f6;
-  --teal-100: #d6eee9;
-  --teal-200: #adddd3;
-  --teal-300: #79c5b6;
-  --teal-400: #45a593;
-  --teal-500: #218776;
-  --teal-600: #126b5d;
-  --teal-700: #0f574c;
-  --teal-800: #0e453d;
-  --teal-900: #0c3832;
+  --blue-1: #e6f4ff;
+  --blue-2: #bae0ff;
+  --blue-3: #91caff;
+  --blue-4: #69b1ff;
+  --blue-5: #4096ff;
+  --blue-6: #1677ff;
+  --blue-7: #0958d9;
+  --blue-8: #003eb3;
+  --blue-9: #002c8c;
+  --blue-10: #001d66;
 
-  --slate-50: #f7f9fa;
-  --slate-100: #eff2f4;
-  --slate-200: #e1e6ea;
-  --slate-300: #cbd3d9;
-  --slate-400: #9aa6af;
-  --slate-500: #6b7780;
-  --slate-600: #4d575f;
-  --slate-700: #3a434a;
-  --slate-800: #252c31;
-  --slate-900: #161b1f;
+  --success: #52c41a;
+  --success-bg: #f6ffed;
+  --success-fg: #389e0d;
+  --success-border: #b7eb8f;
+  --warning: #faad14;
+  --warning-bg: #fffbe6;
+  --warning-fg: #d48806;
+  --warning-border: #ffe58f;
+  --error: #ff4d4f;
+  --error-bg: #fff2f0;
+  --error-fg: #cf1322;
+  --error-border: #ffccc7;
+  --info: #1677ff;
+  --info-bg: #e6f4ff;
+  --info-fg: #0958d9;
+  --info-border: #91caff;
 
-  --amber-50: #fcf6ea;
-  --amber-100: #f8e9c9;
-  --amber-300: #efc877;
-  --amber-500: #d98a1f;
-  --amber-600: #b5701a;
+  --row-missing: var(--error-bg);
+  --row-review: var(--warning-bg);
 
-  --success: #1e9e62;
-  --success-bg: #e6f4ec;
-  --success-fg: #11623d;
-  --warning: #c9821a;
-  --warning-bg: #fbf0dc;
-  --warning-fg: #855210;
-  --error: #c8443b;
-  --error-bg: #fbe9e7;
-  --error-fg: #8a2a24;
-  --info: #2d6fb3;
-  --info-bg: #e7f0f9;
-  --info-fg: #1b466f;
-
-  --row-missing: #fbe9e7;
-  --row-review: #fcf6ea;
-
-  --bg-app: var(--slate-50);
+  --bg-app: #f5f5f5;
   --bg-surface: #ffffff;
-  --fg1: var(--slate-900);
-  --fg2: var(--slate-600);
-  --fg3: var(--slate-400);
+  --fg1: #000000e0;
+  --fg2: #000000a6;
+  --fg3: #00000040;
 
-  /* Carbon-inspired semantic aliases for BudgetFlow surfaces. */
-  --bf-background: var(--slate-50);
+  --bf-background: #f5f5f5;
   --bf-layer-01: #ffffff;
-  --bf-layer-02: var(--slate-50);
-  --bf-layer-hover: var(--slate-100);
-  --bf-layer-selected: rgb(22 27 31 / 0.04);
-  --bf-border-subtle: var(--slate-200);
-  --bf-border-strong: var(--slate-300);
-  --bf-text-primary: var(--slate-900);
-  --bf-text-secondary: var(--slate-600);
-  --bf-text-muted: var(--slate-400);
-  --bf-primary: var(--teal-600);
-  --bf-primary-hover: var(--teal-700);
-  --bf-primary-subtle: var(--teal-50);
-  --bf-primary-muted: var(--teal-100);
-  --bf-focus: var(--teal-600);
+  --bf-layer-02: #fafafa;
+  --bf-layer-hover: #0000000a;
+  --bf-layer-selected: #e6f4ff;
+  --bf-border-subtle: #d9d9d9;
+  --bf-border-strong: #bfbfbf;
+  --bf-text-primary: #000000e0;
+  --bf-text-secondary: #000000a6;
+  --bf-text-muted: #00000040;
+  --bf-primary: var(--blue-6);
+  --bf-primary-hover: var(--blue-5);
+  --bf-primary-active: var(--blue-7);
+  --bf-primary-subtle: var(--blue-1);
+  --bf-primary-muted: var(--blue-2);
+  --bf-focus: var(--blue-6);
   --bf-support-success: var(--success);
   --bf-support-success-bg: var(--success-bg);
   --bf-support-success-fg: var(--success-fg);
-  --bf-support-success-border: var(--teal-200);
+  --bf-support-success-border: var(--success-border);
   --bf-support-warning: var(--warning);
   --bf-support-warning-bg: var(--warning-bg);
   --bf-support-warning-fg: var(--warning-fg);
-  --bf-support-warning-border: var(--amber-300);
+  --bf-support-warning-border: var(--warning-border);
   --bf-support-error: var(--error);
   --bf-support-error-bg: var(--error-bg);
   --bf-support-error-fg: var(--error-fg);
-  --bf-support-error-border: #f8dedb;
+  --bf-support-error-border: var(--error-border);
   --bf-support-info: var(--info);
   --bf-support-info-bg: var(--info-bg);
   --bf-support-info-fg: var(--info-fg);
-  --bf-support-info-border: #b8d3ec;
-  --bf-status-exported-bg: var(--teal-50);
-  --bf-status-exported-fg: var(--teal-700);
-  --bf-status-exported-border: var(--teal-200);
+  --bf-support-info-border: var(--info-border);
+  --bf-status-exported-bg: var(--success-bg);
+  --bf-status-exported-fg: var(--success-fg);
+  --bf-status-exported-border: var(--success-border);
   --bf-row-missing: var(--row-missing);
   --bf-row-review: var(--row-review);
 }
@@ -247,12 +234,25 @@
   }
 
   .bf-helper {
-    @apply text-sm leading-6 text-zinc-600;
+    @apply text-sm leading-6;
+    color: var(--bf-text-secondary);
+  }
+
+  /* DESIGN.md §3 — 패널 제목은 16px / weight 600 (700 금지) */
+  .bf-panel-title {
+    @apply text-base font-semibold leading-6;
+    color: var(--bf-text-primary);
+  }
+
+  /* 패널 내부 보조 제목 (14px / weight 600) */
+  .bf-section-title {
+    @apply text-sm font-semibold leading-6;
+    color: var(--bf-text-primary);
   }
 
   .bf-money {
     @apply font-mono tabular-nums;
-    color: var(--slate-900);
+    color: var(--bf-text-primary);
   }
 
   .bf-pulse {

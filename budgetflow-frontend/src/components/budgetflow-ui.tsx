@@ -49,13 +49,13 @@ const progressToneClass: Record<
 export function BrandLink({ className }: { className?: string }) {
   return (
     <Link
-      href="/projects"
+      href="/home"
       className={cn(
-        "inline-flex items-center gap-2 text-sm font-bold text-[var(--bf-text-primary)]",
+        "inline-flex items-center gap-2 text-sm font-semibold text-[var(--bf-text-primary)]",
         className,
       )}
     >
-      <span className="grid size-8 place-items-center rounded-lg bg-[var(--bf-primary)] text-xs font-bold text-white shadow-sm">
+      <span className="grid size-8 place-items-center rounded-md bg-[var(--bf-primary)] text-xs font-semibold text-white">
         BF
       </span>
       <span>
@@ -78,7 +78,7 @@ export function StatusBadge({
   return (
     <span
       className={cn(
-        "inline-flex min-h-6 items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold leading-tight",
+        "inline-flex min-h-6 items-center rounded border px-2 py-0.5 text-xs font-medium leading-tight",
         statusToneClass[tone],
         className,
       )}
@@ -99,7 +99,7 @@ export function Panel({
   return (
     <section
       className={cn(
-        "rounded-lg border border-[var(--bf-border-subtle)] bg-[var(--bf-layer-01)] shadow-sm",
+        "rounded-lg border border-[var(--bf-border-subtle)] bg-[var(--bf-layer-01)]",
         className,
       )}
       {...props}
@@ -123,20 +123,20 @@ export function PageHeader({
   return (
     <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
       <div className="min-w-0 w-full max-w-xs sm:max-w-3xl">
-        <p className="text-xs font-bold uppercase text-[var(--bf-text-muted)]">
+        <p className="text-xs font-semibold uppercase text-[var(--bf-text-muted)]">
           {eyebrow}
         </p>
-        <h1 className="mt-2 break-keep text-2xl font-bold text-[var(--bf-text-primary)] sm:text-3xl">
+        <h1 className="mt-2 break-keep text-[30px] font-semibold leading-[1.27] text-[var(--bf-text-primary)]">
           {title}
         </h1>
         {lead ? (
-          <p className="mt-2 break-all text-sm leading-6 text-[var(--bf-text-secondary)] sm:text-[0.95rem]">
+          <p className="mt-2 break-keep text-sm leading-6 text-[var(--bf-text-secondary)] sm:text-[0.95rem]">
             {lead}
           </p>
         ) : null}
       </div>
       {actions ? (
-        <div className="flex w-full min-w-0 flex-wrap gap-2 lg:w-auto lg:shrink-0">
+        <div className="flex w-full min-w-0 flex-wrap justify-end gap-2 lg:w-auto lg:shrink-0">
           {actions}
         </div>
       ) : null}
@@ -155,7 +155,7 @@ export function PriorityStrip({
   return (
     <section
       className={cn(
-        "grid gap-3 rounded-lg border border-[var(--bf-border-subtle)] bg-[var(--bf-layer-01)] p-3 shadow-sm md:grid-cols-3",
+        "grid gap-3 rounded-lg border border-[var(--bf-border-subtle)] bg-[var(--bf-layer-01)] p-3 md:grid-cols-3",
         className,
       )}
       {...props}
@@ -183,7 +183,7 @@ export function PriorityStep({
       className={cn("rounded-lg border p-3", priorityToneClass[tone], className)}
     >
       <StatusBadge tone={tone}>{status}</StatusBadge>
-      <strong className="mt-2 block text-sm font-bold text-[var(--bf-text-primary)]">
+      <strong className="mt-2 block text-sm font-semibold text-[var(--bf-text-primary)]">
         {title}
       </strong>
       <p className="mt-1 text-sm leading-6 text-[var(--bf-text-secondary)]">
@@ -203,7 +203,9 @@ export function SectionToolbar({
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div>{children}</div>
-      {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
+      {actions ? (
+        <div className="flex flex-wrap justify-end gap-2">{actions}</div>
+      ) : null}
     </div>
   );
 }
@@ -262,10 +264,10 @@ export function SegmentedControl<TValue extends string>({
           <button
             aria-pressed={isSelected}
             className={cn(
-              "h-9 rounded-lg border px-3 text-sm font-semibold outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/50",
+              "h-11 rounded-md border px-3 text-sm font-normal outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/20 sm:h-8",
               isSelected
-                ? "border-[var(--bf-text-primary)] bg-[var(--bf-text-primary)] text-white shadow-sm"
-                : "border-[var(--bf-border-subtle)] bg-[var(--bf-layer-01)] text-[var(--bf-text-secondary)] hover:bg-[var(--bf-layer-hover)] hover:text-[var(--bf-text-primary)]",
+                ? "border-[var(--bf-primary)] bg-[var(--bf-primary)] text-white"
+                : "border-[var(--bf-border-subtle)] bg-[var(--bf-layer-01)] text-[var(--bf-text-secondary)] hover:bg-[var(--bf-layer-hover)] hover:text-[var(--bf-text-primary)] active:bg-[var(--bf-layer-hover)]",
             )}
             key={option.value}
             onClick={() => onChange(option.value)}
@@ -275,7 +277,7 @@ export function SegmentedControl<TValue extends string>({
             {option.count !== undefined ? (
               <span
                 className={cn(
-                  "ml-2 rounded px-1.5 py-0.5 text-[0.68rem]",
+                  "ml-2 rounded px-1.5 py-0.5 text-xs",
                   isSelected
                     ? "bg-white/20 text-white"
                     : "bg-[var(--bf-layer-hover)] text-[var(--bf-text-secondary)]",
@@ -308,7 +310,7 @@ export function Callout({
     <div className={cn("rounded-lg border p-3", priorityToneClass[tone], className)}>
       <div className="flex items-start justify-between gap-3">
         <div>
-          <strong className="text-sm font-bold text-[var(--bf-text-primary)]">
+          <strong className="text-sm font-semibold text-[var(--bf-text-primary)]">
             {title}
           </strong>
           <p className="mt-1 text-sm leading-6 text-[var(--bf-text-secondary)]">

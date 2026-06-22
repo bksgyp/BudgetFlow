@@ -93,7 +93,7 @@ export function ExpenseDetailModal({
           if (!open) onClose();
         }}
       >
-        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+        <DialogContent className="max-w-2xl">
           {expense && (
             <>
               <DialogHeader>
@@ -113,7 +113,7 @@ export function ExpenseDetailModal({
 
               <div className="space-y-4">
                 {expense.reviewReason && (
-                  <div className="flex items-center gap-2 rounded-lg bg-[var(--bf-support-warning-bg)] px-3 py-2 text-sm font-medium text-[var(--bf-support-warning-fg)]">
+                  <div className="flex items-center gap-2 rounded-lg border border-[var(--bf-support-warning-border)] bg-[var(--bf-support-warning-bg)] px-3 py-2 text-sm font-medium text-[var(--bf-support-warning-fg)]">
                     <AlertTriangle className="size-4 shrink-0" />
                     {expense.reviewReason}
                   </div>
@@ -124,7 +124,7 @@ export function ExpenseDetailModal({
                     <span className="text-[var(--bf-text-secondary)]">
                       AI 신뢰도
                     </span>
-                    <span className="font-bold">
+                    <span className="font-semibold">
                       {Math.round(expense.aiConfidence * 100)}%
                     </span>
                   </div>
@@ -132,7 +132,7 @@ export function ExpenseDetailModal({
                     <span className="text-[var(--bf-text-secondary)]">
                       금액
                     </span>
-                    <span className="font-bold tabular-nums">
+                    <span className="font-semibold tabular-nums">
                       {formatCurrency(expense.amount)}
                     </span>
                   </div>
@@ -195,7 +195,7 @@ export function ExpenseDetailModal({
                     <TextArea {...form.register("description")} />
                   </FormField>
 
-                  <div className="grid grid-cols-2 gap-2 pt-2">
+                  <div className="grid gap-2 pt-2 sm:grid-cols-2">
                     <Button disabled={isMutating} type="submit">
                       <Check className="mr-2 size-4" />
                       승인

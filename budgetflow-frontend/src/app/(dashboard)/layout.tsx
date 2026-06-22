@@ -20,7 +20,7 @@ export default function DashboardLayout({
 
         {/* 메인 콘텐츠 */}
         <main className="flex-1 min-w-0 overflow-x-hidden px-8 py-7 pb-20 md:pb-7 max-sm:px-4 max-sm:py-5">
-          <div className="max-w-[1080px] mx-auto">
+          <div className="mx-auto w-full max-w-[1320px]">
             <PageTransition>{children}</PageTransition>
           </div>
         </main>

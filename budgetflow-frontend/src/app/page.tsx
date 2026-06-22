@@ -1,5 +1,5 @@
-import { LandingClient } from "./landing-client";
+import { redirect } from "next/navigation";
 
 export default function Home() {
-  return <LandingClient />;
+  redirect("/onboarding");
 }

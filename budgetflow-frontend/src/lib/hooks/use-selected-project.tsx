@@ -1,6 +1,12 @@
 "use client";
 
-import { createContext, useContext, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useState,
+  type ReactNode,
+} from "react";
 
 import type { Project } from "@/lib/domain";
 import { useProjects } from "@/lib/hooks/use-budgetflow";
@@ -12,6 +18,8 @@ interface SelectedProjectContextValue {
   selectedProjectId: string | null;
   setSelectedProjectId: (projectId: string) => void;
   isLoading: boolean;
+  isError: boolean;
+  refetch: () => void;
 }
 
 const SelectedProjectContext =
@@ -43,10 +51,10 @@ export function SelectedProjectProvider({ children }: { children: ReactNode }) {
     return isStoredValid ? stored : projects[0].id;
   })();
 
-  const setSelectedProjectId = (projectId: string) => {
+  const setSelectedProjectId = useCallback((projectId: string) => {
     window.localStorage.setItem(storageKey, projectId);
     setOverrideProjectId(projectId);
-  };
+  }, []);
 
   return (
     <SelectedProjectContext.Provider
@@ -55,6 +63,10 @@ export function SelectedProjectProvider({ children }: { children: ReactNode }) {
         selectedProjectId,
         setSelectedProjectId,
         isLoading: projectsQuery.isLoading,
+        isError: projectsQuery.isError,
+        refetch: () => {
+          void projectsQuery.refetch();
+        },
       }}
     >
       {children}

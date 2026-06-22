@@ -44,7 +44,7 @@ const variantConfig: Record<
       `"${name}"을 승인하고 엑셀 생성 대상에 포함합니다.`,
     confirmLabel: "승인",
     confirmClass:
-      "bg-[var(--bf-support-success)] text-white hover:bg-[var(--bf-support-success-fg)]",
+      "bg-[var(--bf-support-success)] text-white hover:bg-[var(--bf-support-success-fg)] active:bg-[var(--bf-support-success-fg)]",
   },
   reject: {
     title: "지출을 반려할까요?",
@@ -52,7 +52,7 @@ const variantConfig: Record<
       `"${name}"을 엑셀 생성 대상에서 제외합니다. 필요하면 반려 사유를 남기세요.`,
     confirmLabel: "반려",
     confirmClass:
-      "bg-[var(--bf-support-error)] text-white hover:bg-[var(--bf-support-error-fg)]",
+      "bg-[var(--bf-support-error)] text-white hover:bg-[var(--bf-support-error-fg)] active:bg-[var(--bf-support-error-fg)]",
   },
   close: {
     title: "정산을 마감할까요?",
@@ -92,7 +92,7 @@ export function ApprovalConfirmDialog({
 
   return (
     <AlertDialog open={open} onOpenChange={handleOpenChange}>
-      <AlertDialogContent>
+      <AlertDialogContent className="max-w-md">
         <AlertDialogHeader>
           <AlertDialogTitle>{config.title}</AlertDialogTitle>
           <AlertDialogDescription>
