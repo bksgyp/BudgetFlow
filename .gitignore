@@ -25,3 +25,4 @@ cdk.out/
 .cdk.staging/
 *.js
 *.d.ts
+!**/ecosystem.config.js
