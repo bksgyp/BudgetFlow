@@ -141,16 +141,41 @@ type BackendExportJob = {
 
 type BackendTaxPeriod = Partial<TaxPeriod> & {
   period: string;
+  // 백엔드 실제 응답 필드 별칭
+  totalCount?: number;
+  needsReviewCount?: number;
 };
 
-type BackendTaxReadinessReport = Partial<TaxReadinessReport>;
+type BackendTaxReadinessReport = Partial<TaxReadinessReport> & {
+  // 백엔드 실제 응답 필드 별칭
+  readinessScore?: number;
+  totalCount?: number;
+};
 
-type BackendTaxFinding = Partial<TaxFinding> & {
-  id: string;
+type BackendTaxFinding = {
+  id?: string;
+  projectId?: string;
+  period?: string;
   expenseId: string;
+  type?: string;
+  findingType?: string;
+  severity?: string;
+  title?: string;
+  description?: string;
+  reviewReason?: string;
+  recommendedAction?: string;
+  suggestedActions?: string[];
+  createdAt?: string;
 };
 
-type BackendTaxFeeImpact = Partial<TaxFeeImpact>;
+type BackendTaxFeeImpact = Partial<TaxFeeImpact> & {
+  // 백엔드 실제 응답 필드 별칭
+  baseMonthlyFee?: number;
+  targetMonthlyFee?: number;
+  monthlySaving?: number;
+  annualSaving?: number;
+  basis?: string;
+};
 
 // ─── 어댑터 ────────────────────────────────────────────────────────────────────
 
@@ -263,8 +288,8 @@ function toTaxPeriod(r: BackendTaxPeriod, projectId: string): TaxPeriod {
     period: r.period,
     label: r.label ?? formatTaxPeriodLabel(r.period),
     status: r.status ?? "open",
-    transactionCount: Number(r.transactionCount ?? 0),
-    reviewCount: Number(r.reviewCount ?? 0),
+    transactionCount: Number(r.transactionCount ?? r.totalCount ?? 0),
+    reviewCount: Number(r.reviewCount ?? r.needsReviewCount ?? 0),
     blockedCount: Number(r.blockedCount ?? 0),
     updatedAt: r.updatedAt ?? now,
   };
@@ -275,15 +300,22 @@ function toTaxReadinessReport(
   projectId: string,
   period: string,
 ): TaxReadinessReport {
-  const totalExpenseCount = Number(r.totalExpenseCount ?? 0);
+  const totalExpenseCount = Number(r.totalExpenseCount ?? r.totalCount ?? 0);
   const readyCount = Number(r.readyCount ?? 0);
   const needsReviewCount = Number(r.needsReviewCount ?? 0);
   const blockedCount = Number(r.blockedCount ?? 0);
+  const score = Number(r.score ?? r.readinessScore ?? 0);
+  const automatableRate = Number(
+    r.automatableRate ??
+      (totalExpenseCount > 0
+        ? Math.round((readyCount / totalExpenseCount) * 100)
+        : 0),
+  );
   return {
     projectId: r.projectId ?? projectId,
     period: r.period ?? period,
-    score: Number(r.score ?? 0),
-    automatableRate: Number(r.automatableRate ?? 0),
+    score,
+    automatableRate,
     readyCount,
     needsReviewCount,
     blockedCount,
@@ -293,21 +325,60 @@ function toTaxReadinessReport(
   };
 }
 
+// 백엔드 finding 필드(별칭/이종 값)를 프론트 계약으로 매핑
+function mapFindingSeverity(s?: string): TaxFinding["severity"] {
+  if (s === "blocking" || s === "high") return "blocking";
+  if (s === "info" || s === "low") return "info";
+  return "review"; // review | medium | 기타
+}
+
+function mapFindingType(t?: string): TaxFinding["type"] {
+  switch (t) {
+    case "missing_evidence":
+      return "missing_evidence";
+    case "ocr_failed":
+    case "ocr_poor":
+    case "ocr_failure":
+      return "ocr_failure";
+    case "personal_risk":
+      return "personal_risk";
+    case "duplicate_risk":
+      return "duplicate_risk";
+    case "period_mismatch":
+      return "period_mismatch";
+    default:
+      return "vat_review";
+  }
+}
+
+const FINDING_TITLE: Record<TaxFinding["type"], string> = {
+  missing_evidence: "증빙 누락",
+  ocr_failure: "OCR 실패",
+  vat_review: "VAT 후보 검토",
+  personal_risk: "개인 지출 위험",
+  duplicate_risk: "중복 의심",
+  period_mismatch: "기간 불일치",
+};
+
 function toTaxFinding(
   r: BackendTaxFinding,
   projectId: string,
   period: string,
 ): TaxFinding {
+  const type = mapFindingType(r.type ?? r.findingType);
   return {
-    id: r.id,
+    id: r.id ?? `tax-finding-${r.expenseId}`,
     projectId: r.projectId ?? projectId,
     period: r.period ?? period,
     expenseId: r.expenseId,
-    type: r.type ?? "vat_review",
-    severity: r.severity ?? "review",
-    title: r.title ?? "세무 검토 필요",
-    description: r.description ?? "",
-    recommendedAction: r.recommendedAction ?? "검토 후 상태를 갱신하세요.",
+    type,
+    severity: mapFindingSeverity(r.severity),
+    title: r.title ?? FINDING_TITLE[type] ?? "세무 검토 필요",
+    description: r.description ?? r.reviewReason ?? "",
+    recommendedAction:
+      r.recommendedAction ??
+      r.suggestedActions?.[0] ??
+      "검토 후 상태를 갱신하세요.",
     createdAt: r.createdAt ?? new Date().toISOString(),
   };
 }
@@ -317,10 +388,14 @@ function toTaxFeeImpact(
   projectId: string,
   period: string,
 ): TaxFeeImpact {
-  const currentMonthlyFee = Number(r.currentMonthlyFee ?? 375_000);
-  const budgetflowMonthlyFee = Number(r.budgetflowMonthlyFee ?? 301_400);
+  const currentMonthlyFee = Number(
+    r.currentMonthlyFee ?? r.baseMonthlyFee ?? 375_000,
+  );
+  const budgetflowMonthlyFee = Number(
+    r.budgetflowMonthlyFee ?? r.targetMonthlyFee ?? 301_400,
+  );
   const monthlySavings = Number(
-    r.monthlySavings ?? currentMonthlyFee - budgetflowMonthlyFee,
+    r.monthlySavings ?? r.monthlySaving ?? currentMonthlyFee - budgetflowMonthlyFee,
   );
   return {
     projectId: r.projectId ?? projectId,
@@ -328,18 +403,20 @@ function toTaxFeeImpact(
     currentMonthlyFee,
     budgetflowMonthlyFee,
     monthlySavings,
-    annualSavings: Number(r.annualSavings ?? monthlySavings * 12),
+    annualSavings: Number(r.annualSavings ?? r.annualSaving ?? monthlySavings * 12),
     bookkeepingFee: Number(r.bookkeepingFee ?? 300_000),
     corporateTaxAdjustmentMonthlyEquivalent: Number(
       r.corporateTaxAdjustmentMonthlyEquivalent ?? 75_000,
     ),
     assumptions:
       r.assumptions ??
-      [
-        "월 기장료 300,000원",
-        "법인세 조정료 900,000원을 12개월로 배분",
-        "반복 증빙 정리와 신고 준비 자료 생성 업무를 BudgetFlow가 대체",
-      ],
+      (r.basis
+        ? [r.basis]
+        : [
+            "월 기장료 300,000원",
+            "법인세 조정료 900,000원을 12개월로 배분",
+            "반복 증빙 정리와 신고 준비 자료 생성 업무를 BudgetFlow가 대체",
+          ]),
   };
 }
 
