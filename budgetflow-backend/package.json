@@ -33,6 +33,7 @@
     "start": "node dist/server.js",
     "seed:demo": "ts-node --project tsconfig.seed.json scripts/seed/seed-demo.ts",
     "seed:test": "psql -h ${DB_HOST:-localhost} -U ${DB_USER:-postgres} -d ${DB_NAME:-budgetflow} -f scripts/seed/seed-test.sql",
-    "seed:all": "npm run seed:test && npm run seed:demo"
+    "seed:all": "npm run seed:test && npm run seed:demo",
+    "benchmark:taxops": "ts-node --project tsconfig.seed.json scripts/taxops-offline-benchmark.ts"
   }
 }
