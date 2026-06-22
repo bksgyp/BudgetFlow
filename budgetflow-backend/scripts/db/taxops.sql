@@ -4,7 +4,7 @@ ALTER TABLE expenses
   ADD COLUMN IF NOT EXISTS business_purpose  TEXT,
   ADD COLUMN IF NOT EXISTS vat_class         VARCHAR(30) NOT NULL DEFAULT 'unknown',
   ADD COLUMN IF NOT EXISTS vat_reason        TEXT,
-  ADD COLUMN IF NOT EXISTS deductibility     VARCHAR(20) NOT NULL DEFAULT 'unknown',
+  ADD COLUMN IF NOT EXISTS deductibility     VARCHAR(30) NOT NULL DEFAULT 'unknown',
   ADD COLUMN IF NOT EXISTS tax_review_status VARCHAR(20) NOT NULL DEFAULT 'needs_review',
   ADD COLUMN IF NOT EXISTS tax_review_reason TEXT,
   ADD COLUMN IF NOT EXISTS ocr_quality       VARCHAR(10) NOT NULL DEFAULT 'good',
