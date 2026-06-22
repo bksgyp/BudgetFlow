@@ -8,6 +8,27 @@ import { v4 as uuidv4 } from 'uuid';
 
 const router = Router();
 
+// 증빙 s3Key(evidence_file_id) → 조회용 이미지 URL.
+// 새 의존성 없이 환경변수로 공개 URL을 구성한다.
+// 우선순위: S3_PUBLIC_BASE_URL(CloudFront 등) > S3 버킷 퍼블릭 URL.
+const S3_PUBLIC_BASE =
+  process.env.S3_PUBLIC_BASE_URL ??
+  (process.env.S3_BUCKET_NAME
+    ? `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION || 'ap-northeast-2'}.amazonaws.com`
+    : '');
+
+function withImageUrl<T extends { evidence_file_id?: string | null }>(row: T) {
+  const key = row.evidence_file_id;
+  const imageUrl = !key
+    ? null
+    : /^https?:\/\//.test(key)
+      ? key
+      : S3_PUBLIC_BASE
+        ? `${S3_PUBLIC_BASE}/${key}`
+        : null;
+  return { ...row, image_url: imageUrl };
+}
+
 router.get('/', authenticateJWT, asyncHandler(async (req: AuthRequest, res: Response) => {
   const { projectId, status } = req.query;
   let query = 'SELECT * FROM expenses WHERE 1=1';
@@ -15,7 +36,7 @@ router.get('/', authenticateJWT, asyncHandler(async (req: AuthRequest, res: Resp
   if (projectId) { params.push(projectId); query += ` AND project_id = $${params.length}`; }
   if (status && status !== 'all') { params.push(status); query += ` AND status = $${params.length}`; }
   query += ' ORDER BY created_at DESC';
-  res.status(200).json((await pool.query(query, params)).rows);
+  res.status(200).json((await pool.query(query, params)).rows.map(withImageUrl));
 }));
 
 router.get('/summary', authenticateJWT, asyncHandler(async (req: AuthRequest, res: Response) => {
