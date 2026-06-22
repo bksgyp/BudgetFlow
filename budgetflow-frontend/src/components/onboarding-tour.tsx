@@ -35,9 +35,13 @@ export function OnboardingTour() {
 
   // 첫 마운트: localStorage에 tour_seen 없으면 투어 시작
   useEffect(() => {
-    if (!localStorage.getItem(TOUR_KEY)) {
+    if (localStorage.getItem(TOUR_KEY)) return;
+
+    const startTour = window.setTimeout(() => {
       setStep(0);
-    }
+    }, 0);
+
+    return () => window.clearTimeout(startTour);
   }, []);
 
   // step이 바뀌면 해당 경로로 이동

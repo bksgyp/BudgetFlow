@@ -3,6 +3,10 @@
 
 # 로컬 설정
 .omx/
+.claude/
+.playwright-mcp/
+.superpowers/
+**/.superpowers/
 artifacts/
 *.zip
 

@@ -54,12 +54,11 @@ const TECH_STACK = [
 export function LandingClient() {
   const router = useRouter();
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (localStorage.getItem(sessionStorageKey)) {
       router.replace("/projects");
     }
-  }, []);
+  }, [router]);
 
   return (
     <div className="min-h-dvh bg-white">

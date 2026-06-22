@@ -27,7 +27,6 @@ import { ExpenseDetailModal } from "@/components/expenses/expense-detail-modal";
 import { TextInput } from "@/components/form-controls";
 import { SummaryCard } from "@/components/summary-card";
 import { Button } from "@/components/ui/button";
-import { DEMO_PROJECT_ID } from "@/lib/config/demo";
 import type { Expense, ExpenseStatus, ExportJob, Project } from "@/lib/domain";
 import {
   formatCurrency,
@@ -43,6 +42,7 @@ import {
   useProject,
   useRequestExpenseReportExport,
 } from "@/lib/hooks/use-budgetflow";
+import { useSelectedProject } from "@/lib/hooks/use-selected-project";
 import {
   evidenceStatusLabel,
   expenseStatusFilterOptions,
@@ -51,6 +51,16 @@ import {
 import { evidenceStatusTone, expenseStatusTone } from "@/lib/status-tone";
 
 export function ExpensesClient() {
+  const { selectedProjectId } = useSelectedProject();
+
+  if (!selectedProjectId) {
+    return null;
+  }
+
+  return <ExpensesClientInner projectId={selectedProjectId} />;
+}
+
+function ExpensesClientInner({ projectId }: { projectId: string }) {
   const [status, setStatus] = useState<ExpenseStatus | "all">("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedExpenseId, setSelectedExpenseId] = useState<
@@ -59,14 +69,14 @@ export function ExpensesClient() {
   const [confirmVariant, setConfirmVariant] = useState<
     "close" | "export" | null
   >(null);
-  const projectQuery = useProject(DEMO_PROJECT_ID);
-  const allExpensesQuery = useExpenses(DEMO_PROJECT_ID, "all");
-  const expensesQuery = useExpenses(DEMO_PROJECT_ID, status);
-  const summaryQuery = useExpenseSummary(DEMO_PROJECT_ID);
-  const categoriesQuery = useBudgetCategories(DEMO_PROJECT_ID);
-  const exportJobsQuery = useExportJobs(DEMO_PROJECT_ID);
-  const closeProjectMutation = useCloseProject(DEMO_PROJECT_ID);
-  const requestExportMutation = useRequestExpenseReportExport(DEMO_PROJECT_ID);
+  const projectQuery = useProject(projectId);
+  const allExpensesQuery = useExpenses(projectId, "all");
+  const expensesQuery = useExpenses(projectId, status);
+  const summaryQuery = useExpenseSummary(projectId);
+  const categoriesQuery = useBudgetCategories(projectId);
+  const exportJobsQuery = useExportJobs(projectId);
+  const closeProjectMutation = useCloseProject(projectId);
+  const requestExportMutation = useRequestExpenseReportExport(projectId);
 
   const categoryNameById = useMemo(
     () =>
@@ -352,6 +362,7 @@ export function ExpensesClient() {
         categories={categoriesQuery.data ?? []}
         expense={selectedExpense}
         onClose={() => setSelectedExpenseId(null)}
+        projectId={projectId}
       />
 
       <ApprovalConfirmDialog

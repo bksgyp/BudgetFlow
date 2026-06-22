@@ -26,7 +26,7 @@ import { TextInput } from "@/components/form-controls";
 import { FormField } from "@/components/form-field";
 import { SummaryCard } from "@/components/summary-card";
 import { Button } from "@/components/ui/button";
-import { DEMO_ORGANIZATION_ID, DEMO_PROJECT_ID } from "@/lib/config/demo";
+import { DEMO_ORGANIZATION_ID } from "@/lib/config/demo";
 import type { Project } from "@/lib/domain";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import {
@@ -39,6 +39,7 @@ import {
   useExpenseSummary,
   useProjects,
 } from "@/lib/hooks/use-budgetflow";
+import { useSelectedProject } from "@/lib/hooks/use-selected-project";
 
 const defaultValues: CreateProjectInput = {
   organizationId: DEMO_ORGANIZATION_ID,
@@ -49,8 +50,18 @@ const defaultValues: CreateProjectInput = {
 };
 
 export function ProjectsClient() {
+  const { selectedProjectId } = useSelectedProject();
+
+  if (!selectedProjectId) {
+    return null;
+  }
+
+  return <ProjectsClientInner projectId={selectedProjectId} />;
+}
+
+function ProjectsClientInner({ projectId }: { projectId: string }) {
   const projectsQuery = useProjects();
-  const summaryQuery = useExpenseSummary(DEMO_PROJECT_ID);
+  const summaryQuery = useExpenseSummary(projectId);
   const createProjectMutation = useCreateProject();
   const form = useForm<CreateProjectInput, undefined, CreateProjectValues>({
     resolver: zodResolver(createProjectSchema),
