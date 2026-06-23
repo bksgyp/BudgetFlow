@@ -4,6 +4,12 @@ import { asyncHandler } from '../../middlewares/asyncHandler';
 import { pool } from '../../config/database';
 import ExcelJS from 'exceljs';
 import { v4 as uuidv4 } from 'uuid';
+import {
+  BRAND_NAME,
+  BRAND_DESCRIPTION,
+  BRAND_DISCLAIMER,
+  BRAND_LOGO_PNG_BASE64,
+} from '../../assets/brand';
 
 const router = Router();
 
@@ -19,6 +25,12 @@ router.get('/:projectId/exports', authenticateJWT, asyncHandler(async (req: Auth
 // 2. 지출내역서 엑셀 생성
 router.post('/:projectId/exports/expense-report', authenticateJWT, asyncHandler(async (req: AuthRequest, res: Response) => {
   const { projectId } = req.params;
+
+  const projectResult = await pool.query(
+    'SELECT name, slack_channel_name FROM projects WHERE id = $1',
+    [projectId],
+  );
+  const project = projectResult.rows[0] ?? { name: projectId, slack_channel_name: '' };
 
   const expenses = await pool.query(
     `SELECT e.*, bc.name AS category_name
@@ -50,6 +62,40 @@ router.post('/:projectId/exports/expense-report', authenticateJWT, asyncHandler(
   };
   expenses.rows.forEach(row => sheet.addRow(row));
 
+  // ── 브랜드 / 면책 푸터 (데이터 표 마지막 아래) ───────────────────────────
+  const dataEndRow = 1 + expenses.rows.length; // 헤더 + 데이터
+  const brandRowNum = dataEndRow + 2;          // 한 줄 비우고 브랜드 행
+
+  const logoId = workbook.addImage({
+    base64: BRAND_LOGO_PNG_BASE64,
+    extension: 'png',
+  });
+  // 로고는 A열, 브랜드명 행 높이에 맞춰 앵커(0-indexed row)
+  sheet.addImage(logoId, {
+    tl: { col: 0, row: brandRowNum - 1 },
+    ext: { width: 36, height: 36 },
+    editAs: 'oneCell',
+  });
+
+  const brandRow = sheet.getRow(brandRowNum);
+  brandRow.height = 28;
+  const brandCell = brandRow.getCell(2);
+  brandCell.value = BRAND_NAME;
+  brandCell.font = { bold: true, size: 14, color: { argb: 'FF1677FF' } };
+  brandCell.alignment = { vertical: 'middle' };
+
+  const descCell = sheet.getRow(brandRowNum + 1).getCell(2);
+  descCell.value = BRAND_DESCRIPTION;
+  descCell.font = { size: 10, color: { argb: 'FF8C8C8C' } };
+
+  const disclaimerRowNum = brandRowNum + 3;
+  sheet.mergeCells(disclaimerRowNum, 1, disclaimerRowNum, 6);
+  const disclaimerCell = sheet.getCell(disclaimerRowNum, 1);
+  disclaimerCell.value = BRAND_DISCLAIMER;
+  disclaimerCell.font = { size: 9, italic: true, color: { argb: 'FF8C8C8C' } };
+  disclaimerCell.alignment = { wrapText: true, vertical: 'top' };
+  sheet.getRow(disclaimerRowNum).height = 56;
+
   const jobId = `export_${uuidv4()}`;
   await pool.query(
     `INSERT INTO export_jobs (id, project_id, type, status, included_expense_count, excluded_review_count)
@@ -57,8 +103,14 @@ router.post('/:projectId/exports/expense-report', authenticateJWT, asyncHandler(
     [jobId, projectId, expenses.rows.length, parseInt(excluded.rows[0].count)]
   );
 
+  // 파일명: "프로젝트명(슬랙명)_report.xlsx" — 비ASCII는 RFC5987(filename*)로 인코딩
+  const slack = project.slack_channel_name ? `(${project.slack_channel_name})` : '';
+  const downloadName = `${project.name}${slack}_report.xlsx`.replace(/[\\/:*?"<>|]/g, '_');
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-  res.setHeader('Content-Disposition', `attachment; filename="expense-report-${projectId}.xlsx"`);
+  res.setHeader(
+    'Content-Disposition',
+    `attachment; filename="report.xlsx"; filename*=UTF-8''${encodeURIComponent(downloadName)}`,
+  );
   await workbook.xlsx.write(res);
   res.end();
 }));

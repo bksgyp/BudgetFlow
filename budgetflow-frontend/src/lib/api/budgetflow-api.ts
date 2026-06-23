@@ -1176,11 +1176,12 @@ export async function getExportJobs(projectId: string): Promise<ExportJob[]> {
 
 export async function requestExpenseReportExport(
   projectId: string,
+  fileName?: string,
 ): Promise<ExportJob> {
   if (liveApi()) {
     await downloadFile(
       `/api/projects/${projectId}/exports/expense-report`,
-      `expense-report-${projectId}.xlsx`,
+      fileName ?? `expense-report-${projectId}.xlsx`,
     );
     const now = new Date().toISOString();
     return {

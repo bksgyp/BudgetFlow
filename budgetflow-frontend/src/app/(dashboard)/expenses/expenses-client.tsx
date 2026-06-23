@@ -124,6 +124,8 @@ function ExpensesClientInner({ projectId }: { projectId: string }) {
   const [confirmVariant, setConfirmVariant] = useState<
     "close" | "export" | null
   >(null);
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 10;
   const projectQuery = useProject(projectId);
   const allExpensesQuery = useExpenses(projectId, "all");
   const expensesQuery = useExpenses(projectId, status);
@@ -167,6 +169,30 @@ function ExpensesClientInner({ projectId }: { projectId: string }) {
         .includes(normalizedQuery),
     );
   }, [categoryNameById, expensesQuery.data, searchQuery]);
+
+  // 필터/검색이 바뀌면 첫 페이지로 되돌린다.
+  useEffect(() => {
+    setPage(1);
+  }, [status, searchQuery]);
+
+  const pageCount = Math.max(1, Math.ceil(visibleExpenses.length / PAGE_SIZE));
+  const safePage = Math.min(page, pageCount);
+  const pagedExpenses = useMemo(
+    () => visibleExpenses.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE),
+    [visibleExpenses, safePage],
+  );
+
+  const exportFileName = useMemo(() => {
+    const project = projectQuery.data;
+    if (!project) return undefined;
+    const slack = project.slackChannelName
+      ? `(${project.slackChannelName})`
+      : "";
+    return `${project.name}${slack}_report.xlsx`.replace(
+      /[\\/:*?"<>|]/g,
+      "_",
+    );
+  }, [projectQuery.data]);
   const filterCounts = useMemo(() => {
     const counts: Partial<Record<ExpenseStatus | "all", number>> = {
       all: allExpenses.length,
@@ -181,12 +207,6 @@ function ExpensesClientInner({ projectId }: { projectId: string }) {
   const effectiveSelectedExpenseId = selectedExpenseId;
   const selectedExpense =
     allExpenses.find((expense) => expense.id === selectedExpenseId) ?? null;
-  const detailExpense =
-    selectedExpense ??
-    visibleExpenses.find((expense) => expense.evidenceStatus === "none") ??
-    visibleExpenses.find((expense) => expense.status === "needs_review") ??
-    visibleExpenses[0] ??
-    null;
   const latestCompletedExport =
     exportJobsQuery.data?.find(
       (exportJob) => exportJob.status === "completed",
@@ -198,7 +218,7 @@ function ExpensesClientInner({ projectId }: { projectId: string }) {
   };
 
   const requestExport = async () => {
-    await requestExportMutation.mutateAsync();
+    await requestExportMutation.mutateAsync(exportFileName);
     setConfirmVariant(null);
   };
 
@@ -347,7 +367,7 @@ function ExpensesClientInner({ projectId }: { projectId: string }) {
                       </tr>
                     ) : null}
 
-                    {visibleExpenses.map((expense) => (
+                    {pagedExpenses.map((expense) => (
                       <ExpenseTableRow
                         categoryName={
                           categoryNameById.get(expense.categoryId) ?? "미분류"
@@ -374,8 +394,8 @@ function ExpensesClientInner({ projectId }: { projectId: string }) {
               </div>
 
               <div className="divide-y divide-[var(--bf-border-subtle)] md:hidden">
-                <AnimatedExpenseList listKey={`${status}-${searchQuery}`}>
-                  {visibleExpenses.map((expense) => (
+                <AnimatedExpenseList listKey={`${status}-${searchQuery}-${safePage}`}>
+                  {pagedExpenses.map((expense) => (
                     <ExpenseMobileCard
                       categoryName={
                         categoryNameById.get(expense.categoryId) ?? "미분류"
@@ -388,9 +408,20 @@ function ExpensesClientInner({ projectId }: { projectId: string }) {
                   ))}
                 </AnimatedExpenseList>
               </div>
+
+              {visibleExpenses.length > 0 ? (
+                <ExpensePagination
+                  onPageChange={setPage}
+                  page={safePage}
+                  pageCount={pageCount}
+                  pageSize={PAGE_SIZE}
+                  total={visibleExpenses.length}
+                />
+              ) : null}
             </Panel>
 
             <ExportControls
+              className="min-[1400px]:hidden"
               exportJob={latestCompletedExport}
               isClosing={closeProjectMutation.isPending}
               isExporting={requestExportMutation.isPending}
@@ -407,17 +438,26 @@ function ExpensesClientInner({ projectId }: { projectId: string }) {
               project={projectQuery.data ?? null}
             />
           </div>
-          <ExpenseReviewContextPanel
-            categoryName={
-              detailExpense
-                ? categoryNameById.get(detailExpense.categoryId) ?? "미분류"
-                : "미분류"
-            }
-            expense={detailExpense}
-            onOpenDetail={() => {
-              if (detailExpense) setSelectedExpenseId(detailExpense.id);
-            }}
-          />
+          <aside className="hidden min-w-0 min-[1400px]:block">
+            <div className="sticky top-7">
+              <ExportControls
+                exportJob={latestCompletedExport}
+                isClosing={closeProjectMutation.isPending}
+                isExporting={requestExportMutation.isPending}
+                needsReviewCount={summaryQuery.data?.needsReviewCount ?? 0}
+                onCloseClick={() => setConfirmVariant("close")}
+                onExportClick={() => {
+                  if ((summaryQuery.data?.needsReviewCount ?? 0) > 0) {
+                    setConfirmVariant("export");
+                    return;
+                  }
+
+                  void requestExport();
+                }}
+                project={projectQuery.data ?? null}
+              />
+            </div>
+          </aside>
         </section>
       </section>
 
@@ -528,6 +568,7 @@ function ExpenseTableRow({
 }
 
 function ExportControls({
+  className,
   exportJob,
   isClosing,
   isExporting,
@@ -536,6 +577,7 @@ function ExportControls({
   onExportClick,
   project,
 }: {
+  className?: string;
   exportJob: ExportJob | null;
   isClosing: boolean;
   isExporting: boolean;
@@ -545,7 +587,7 @@ function ExportControls({
   project: Project | null;
 }) {
   return (
-    <Panel className="bf-panel-pad" data-tour="export-controls">
+    <Panel className={`bf-panel-pad ${className ?? ""}`} data-tour="export-controls">
       <SectionToolbar
         actions={
           <>
@@ -619,91 +661,50 @@ function ExportControls({
   );
 }
 
-function ExpenseReviewContextPanel({
-  categoryName,
-  expense,
-  onOpenDetail,
+function ExpensePagination({
+  onPageChange,
+  page,
+  pageCount,
+  pageSize,
+  total,
 }: {
-  categoryName: string;
-  expense: Expense | null;
-  onOpenDetail: () => void;
+  onPageChange: (page: number) => void;
+  page: number;
+  pageCount: number;
+  pageSize: number;
+  total: number;
 }) {
+  const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
+  const to = Math.min(page * pageSize, total);
+
   return (
-    <aside className="hidden min-w-0 min-[1400px]:block">
-      <div className="sticky top-7 space-y-4">
-        <Panel className="p-4">
-          {expense ? (
-            <>
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <StatusBadge tone={expenseStatusTone[expense.status]}>
-                    {expenseStatusLabel[expense.status]}
-                  </StatusBadge>
-                  <h2 className="mt-3 truncate text-base font-semibold text-[var(--bf-text-primary)]">
-                    {expense.merchant} 상세 검토
-                  </h2>
-                  <p className="mt-1 line-clamp-2 text-sm leading-6 text-[var(--bf-text-secondary)]">
-                    {expense.description}
-                  </p>
-                </div>
-                <StatusBadge tone={evidenceStatusTone[expense.evidenceStatus]}>
-                  {evidenceStatusLabel[expense.evidenceStatus]}
-                </StatusBadge>
-              </div>
-
-              <dl className="mt-4 grid gap-3 text-sm">
-                <ExpenseInfoRow label="날짜" value={formatDate(expense.date)} />
-                <ExpenseInfoRow label="결제자" value={expense.payerName} />
-                <ExpenseInfoRow label="카테고리" value={categoryName} />
-                <ExpenseInfoRow
-                  label="금액"
-                  value={formatCurrency(expense.amount)}
-                />
-                <ExpenseInfoRow
-                  label="AI 신뢰도"
-                  value={`${Math.round(expense.aiConfidence * 100)}%`}
-                />
-              </dl>
-
-              {expense.reviewReason ? (
-                <div className="mt-4 rounded-lg border border-[var(--bf-support-warning-border)] bg-[var(--bf-support-warning-bg)] p-3">
-                  <div className="flex gap-2">
-                    <AlertTriangle className="mt-0.5 size-4 shrink-0 text-[var(--bf-support-warning-fg)]" />
-                    <p className="text-sm leading-6 text-[var(--bf-text-primary)]">
-                      {expense.reviewReason}
-                    </p>
-                  </div>
-                </div>
-              ) : null}
-
-              <Button className="mt-4 w-full" onClick={onOpenDetail}>
-                상세 모달 열기
-              </Button>
-            </>
-          ) : (
-            <div className="py-8 text-center">
-              <StatusBadge>대기</StatusBadge>
-              <h2 className="mt-3 text-base font-semibold text-[var(--bf-text-primary)]">
-                검토할 지출이 없습니다
-              </h2>
-              <p className="mt-1 text-sm leading-6 text-[var(--bf-text-secondary)]">
-                필터를 바꾸거나 Slack 접수 후 다시 확인하세요.
-              </p>
-            </div>
-          )}
-        </Panel>
-      </div>
-    </aside>
-  );
-}
-
-function ExpenseInfoRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between gap-3 border-b border-[var(--bf-border-subtle)] pb-2 last:border-b-0 last:pb-0">
-      <dt className="text-[var(--bf-text-secondary)]">{label}</dt>
-      <dd className="text-right font-semibold text-[var(--bf-text-primary)]">
-        {value}
-      </dd>
+    <div className="flex flex-col gap-3 border-t border-[var(--bf-border-subtle)] p-4 sm:flex-row sm:items-center sm:justify-between">
+      <p className="text-xs font-medium text-[var(--bf-text-secondary)] tabular-nums">
+        전체 {total}건 중 {from}–{to}건 표시
+      </p>
+      {pageCount > 1 ? (
+        <div className="flex items-center justify-end gap-2">
+          <Button
+            disabled={page <= 1}
+            onClick={() => onPageChange(page - 1)}
+            size="sm"
+            variant="outline"
+          >
+            이전
+          </Button>
+          <span className="px-1 text-sm font-medium text-[var(--bf-text-primary)] tabular-nums">
+            {page} / {pageCount}
+          </span>
+          <Button
+            disabled={page >= pageCount}
+            onClick={() => onPageChange(page + 1)}
+            size="sm"
+            variant="outline"
+          >
+            다음
+          </Button>
+        </div>
+      ) : null}
     </div>
   );
 }

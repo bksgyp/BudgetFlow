@@ -1,0 +1,16 @@
+// BudgetFlow 브랜드 에셋 — 엑셀 생성 시 마지막 브랜드/면책 푸터에 사용.
+// 로고는 public/logo-mark.svg를 96x96 PNG로 래스터화한 base64(외부 파일 의존 없이 번들에 포함).
+
+export const BRAND_NAME = 'BudgetFlow';
+
+export const BRAND_DESCRIPTION =
+  'Slack 영수증 수집 · AI 분석 · 관리자 검토 · 제출용 엑셀 생성과 세무 준비 자동화';
+
+export const BRAND_DISCLAIMER =
+  '본 파일은 BudgetFlow가 승인된 지출만 정리해 생성한 제출용 자료입니다. ' +
+  '검토 필요(needs_review) 항목은 자동으로 제외되었습니다. ' +
+  'BudgetFlow는 신고 대행 서비스가 아니며, 최종 회계·세무 신고와 그 판단의 책임은 제출 기관/담당자에게 있습니다.';
+
+// 96x96 PNG (Daybreak Blue 라운드 사각형 + BudgetFlow 마크)
+export const BRAND_LOGO_PNG_BASE64 =
+  'iVBORw0KGgoAAAANSUhEUgAAAGAAAABgCAYAAADimHc4AAAACXBIWXMAAC4jAAAuIwF4pT92AAAEdUlEQVR4nO1dTW9MYRSeHRIsmPdF2mgIFhIVv4CVjx/g6xewsZC075kpSSOCRISdj5ZFSUgMi/oHNlRVK2p+QCttgkiFNjFj8ci5U01bU7la95433vec5FnOnTPPcz7vLE6hENM2dGO9LeGkceg1DoPG4ZMl1C0BgaPOXEScEHo2OZzY2Il1hf9lxRJ2WYd7xmHGgx+LLIC5MoS7xU7sXDbxrWexxjhcsw4/pX+QzS7q1uFqWzdW/1vUd2KncRj14AcgDzCEl8UubIlHPmHfbH0Xd9zmCx9sB9rjRL6ST8mJYDqwuSn5XKesw1sPIgW5hsMQ99c/BIgarrRzFAaMw4Vmo6ZOO5RaFnxfUIp4zpeOChsebs5tuLpkIXUBDGE62pj59YIH0YAQsamE49x8e6UdsYHCONxhAQalHbEBb8gFQ/gs7YgNFIbwkTOgJu2IDRSG8KMg7YQNHCoAqQCQJkEzgOSJ0BJEYUJ7AKkAkCZBM4DkidASRGFCewAFIkDrOeDcM+DNODBTg3c2U2v41tXf8DVXAuy9BLyfRGZsdKLhcy4E4GjKEvnzRUgjExIXgMtOVq3cnwMBhseRWRsay4EA0x423LjGvqsAgvbtRw4E0BIEWQF4rs6qlfPQhHmU45EuazY6AbR05UAABi81WRJhNE+L2G9wNHFK82jn42Q0XQNejzV8TCPyUxdAARXAehgImgGkAkCaBM0AkidCSxCFCe0BFIgAPFuffgQ8GW789VedTAf8Xfydpx6mO997JcDui0D/u/RIry4B9oF9CUoAjjofyK/OE8GnTEhcAC470qRXF4HLUTACPB2RJ7y6CJXhgATgl2/ShFcXIY3/elWAyaUF4LeewWSAliDICsANT7rkVENuwjqGQlYAhi5ikBXgdyZw6vMImOZkNDQGPH4T+KsIBVQA62kgaAaQCgBpEjQDSJ4ILUEUJrQHUCACtJZrKN/owav7h/C1shX1p8VlgT/Lzyhd742eKU1gJgRoPz+Jtw/2L5v0+hIYuX8gerY0iV4LwFGaBPn1eSJkORMSF4DLTlLk12dB13vFifRWgMG+g4kLMNB3WJxIbwWYqrQlLsBUpU2cyKAF+PJ4mziR3gqgJQiyAvC8rk0YcgLwiMijYpJjaEtJx9C/isDLUhIijOgiFj8TOEp5XueRcSWNearShpd9R6JnZTnyUytBCqgA1uNA0AwgFQBBZ4AecIDsAQc9YQLxEyZ6xIdkj/j0SNdBGygM4XaBb6BLO2IDhSnhaMF0Yy2f1ZN2xgYG5py5b5yyJdyVdsgGBi79Cy5pRwfoPXDMBoBo9C9h+4KbwtbhqrRjNhxcaXrSnMciD5xDnmEcXuw4g1VN78rzlWfjMC7tpM0vJjZ0oaUp+XOlqAPtlvDBA2eRJ8wG9p5CHNtchrEOz6WdtjkqOwtuyMcxrlPG4YLuCFgJ8Xyp9vKSNT+OsXJ8gF6FwL8tWQ53/hg1V2K8tfENdH5/YRwG+E2evspGFOWzXAwYh1tFh2NzG24M+wW2rOmXWpTKewAAAABJRU5ErkJggg==';

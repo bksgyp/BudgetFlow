@@ -260,7 +260,8 @@ export function useRequestExpenseReportExport(projectId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: () => requestExpenseReportExport(projectId),
+    mutationFn: (fileName?: string) =>
+      requestExpenseReportExport(projectId, fileName),
     onSuccess: () => {
       void queryClient.invalidateQueries({
         queryKey: budgetflowQueryKeys.exportJobs(projectId),
