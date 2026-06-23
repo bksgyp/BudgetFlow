@@ -318,6 +318,7 @@ function TaxClientInner({ projectId }: { projectId: string }) {
           expenseById={expenseById}
           findings={findings}
           isPending={updateTaxReviewMutation.isPending}
+          key={period}
           onMarkReady={(expense) => void markReady(expense)}
         />
       </Panel>
@@ -392,7 +393,7 @@ function TaxClientInner({ projectId }: { projectId: string }) {
         </Panel>
       </section>
 
-      <p className="rounded-lg border border-[var(--bf-border-subtle)] bg-[var(--bf-layer-02)] px-4 py-3 text-xs leading-5 text-[var(--bf-text-muted)]">
+      <p className="rounded-lg border border-[var(--bf-border-subtle)] bg-[var(--bf-layer-02)] px-4 py-3 text-xs leading-5 text-[var(--bf-text-secondary)]">
         BudgetFlow는 세무 신고 대행 서비스가 아닙니다. VAT 공제 후보·세무 검토
         상태·비용 절감액은 확정된 세무 판단이 아니라 검토용 추정·후보이며, 최종
         계정과목 확정·세무조정·신고 및 세법 판단의 책임은 관할 세무사 또는 납세자
@@ -405,7 +406,7 @@ function TaxClientInner({ projectId }: { projectId: string }) {
 function FeeBox({ label, value }: { label: string; value: number }) {
   return (
     <div className="rounded-lg border border-[var(--bf-border-subtle)] bg-[var(--bf-layer-02)] p-4">
-      <p className="text-xs font-semibold text-[var(--bf-text-muted)]">{label}</p>
+      <p className="text-xs font-semibold text-[var(--bf-text-secondary)]">{label}</p>
       <strong className="mt-2 block text-2xl font-semibold tabular-nums text-[var(--bf-text-primary)]">
         {formatCurrency(value)}
       </strong>
@@ -463,6 +464,15 @@ function TaxFindingTable({
   isPending: boolean;
   onMarkReady: (expense: Expense) => void;
 }) {
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 8;
+  const pageCount = Math.max(1, Math.ceil(findings.length / PAGE_SIZE));
+  const safePage = Math.min(page, pageCount);
+  const pagedFindings = findings.slice(
+    (safePage - 1) * PAGE_SIZE,
+    safePage * PAGE_SIZE,
+  );
+
   if (findings.length === 0) {
     return (
       <div className="flex min-h-32 items-center justify-center gap-2 p-6 text-sm font-semibold text-[var(--bf-text-secondary)]">
@@ -476,7 +486,7 @@ function TaxFindingTable({
     <>
       <div className="hidden overflow-x-auto md:block">
       <table className="w-full min-w-[760px] text-left text-sm">
-        <thead className="border-b border-[var(--bf-border-subtle)] bg-[var(--bf-layer-02)] text-xs text-[var(--bf-text-muted)]">
+        <thead className="border-b border-[var(--bf-border-subtle)] bg-[var(--bf-layer-02)] text-xs text-[var(--bf-text-secondary)]">
           <tr>
             <th className="px-4 py-3 font-semibold">지출</th>
             <th className="px-4 py-3 text-right font-semibold">금액</th>
@@ -487,7 +497,7 @@ function TaxFindingTable({
           </tr>
         </thead>
         <tbody>
-          {findings.map((finding, index) => {
+          {pagedFindings.map((finding, index) => {
             const expense = expenseById.get(finding.expenseId);
             if (!expense) return null;
 
@@ -541,14 +551,14 @@ function TaxFindingTable({
       </div>
 
       <div className="divide-y divide-[var(--bf-border-subtle)] md:hidden">
-        {findings.map((finding, index) => {
+        {pagedFindings.map((finding, index) => {
           const expense = expenseById.get(finding.expenseId);
           if (!expense) return null;
           return (
             <div className="p-4" key={`${finding.id}-${index}`}>
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-xs text-[var(--bf-text-muted)]">
+                  <p className="text-xs text-[var(--bf-text-secondary)]">
                     {formatDate(expense.date)}
                   </p>
                   <h4 className="mt-0.5 truncate text-sm font-semibold text-[var(--bf-text-primary)]">
@@ -588,6 +598,37 @@ function TaxFindingTable({
           );
         })}
       </div>
+
+      {findings.length > PAGE_SIZE ? (
+        <div className="flex flex-col gap-3 border-t border-[var(--bf-border-subtle)] p-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-xs font-medium tabular-nums text-[var(--bf-text-secondary)]">
+            전체 {findings.length}건 중{" "}
+            {(safePage - 1) * PAGE_SIZE + 1}–
+            {Math.min(safePage * PAGE_SIZE, findings.length)}건 표시
+          </p>
+          <div className="flex items-center justify-end gap-2">
+            <Button
+              disabled={safePage <= 1}
+              onClick={() => setPage(safePage - 1)}
+              size="sm"
+              variant="outline"
+            >
+              이전
+            </Button>
+            <span className="px-1 text-sm font-medium tabular-nums text-[var(--bf-text-primary)]">
+              {safePage} / {pageCount}
+            </span>
+            <Button
+              disabled={safePage >= pageCount}
+              onClick={() => setPage(safePage + 1)}
+              size="sm"
+              variant="outline"
+            >
+              다음
+            </Button>
+          </div>
+        </div>
+      ) : null}
     </>
   );
 }
