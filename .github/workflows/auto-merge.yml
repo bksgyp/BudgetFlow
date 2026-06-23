@@ -13,7 +13,7 @@ jobs:
     steps:
       - name: Enable auto-merge
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.DEPLOY_PAT }}
         run: |
           gh pr merge ${{ github.event.pull_request.number }} \
             --auto --merge \
