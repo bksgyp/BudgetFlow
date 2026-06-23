@@ -3,13 +3,20 @@
 import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AlertTriangle, Check, CircleX, ExternalLink, ImageOff } from "lucide-react";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 
 import { StatusBadge } from "@/components/budgetflow-ui";
 import { ApprovalConfirmDialog } from "@/components/expenses/approval-confirm-dialog";
-import { SelectInput, TextArea, TextInput } from "@/components/form-controls";
+import { TextArea, TextInput } from "@/components/form-controls";
 import { FormField } from "@/components/form-field";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -223,13 +230,31 @@ export function ExpenseDetailModal({
                     error={form.formState.errors.categoryId?.message}
                     label="카테고리"
                   >
-                    <SelectInput {...form.register("categoryId")}>
-                      {categories.map((cat) => (
-                        <option key={cat.id} value={cat.id}>
-                          {cat.name}
-                        </option>
-                      ))}
-                    </SelectInput>
+                    <Controller
+                      control={form.control}
+                      name="categoryId"
+                      render={({ field }) => (
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value || undefined}
+                        >
+                          <SelectTrigger
+                            aria-invalid={!!form.formState.errors.categoryId}
+                            onBlur={field.onBlur}
+                            ref={field.ref}
+                          >
+                            <SelectValue placeholder="카테고리 선택" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {categories.map((cat) => (
+                              <SelectItem key={cat.id} value={cat.id}>
+                                {cat.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
                   </FormField>
 
                   <FormField

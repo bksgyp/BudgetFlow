@@ -27,6 +27,13 @@ import {
 } from "@/components/dashboard-states";
 import { SummaryCard } from "@/components/summary-card";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { Expense, TaxFinding } from "@/lib/domain";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import { useSelectedProject } from "@/lib/hooks/use-selected-project";
@@ -154,17 +161,18 @@ function TaxClientInner({ projectId }: { projectId: string }) {
           <div className="flex flex-wrap items-end gap-2">
             <label className="grid gap-1 text-xs font-semibold text-[var(--bf-text-secondary)]">
               신고 기간
-              <select
-                className="h-11 rounded-lg border border-[var(--bf-border-subtle)] bg-[var(--bf-layer-01)] px-3 text-sm font-semibold text-[var(--bf-text-primary)] shadow-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50 sm:h-10"
-                onChange={(event) => setSelectedPeriod(event.target.value)}
-                value={period}
-              >
-                {(periodsQuery.data ?? []).map((taxPeriod) => (
-                  <option key={taxPeriod.period} value={taxPeriod.period}>
-                    {taxPeriod.label}
-                  </option>
-                ))}
-              </select>
+              <Select onValueChange={setSelectedPeriod} value={period}>
+                <SelectTrigger className="h-11 w-44 font-semibold sm:h-10">
+                  <SelectValue placeholder="기간 선택" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(periodsQuery.data ?? []).map((taxPeriod) => (
+                    <SelectItem key={taxPeriod.period} value={taxPeriod.period}>
+                      {taxPeriod.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </label>
             <Button
               className="h-11 sm:h-10"
