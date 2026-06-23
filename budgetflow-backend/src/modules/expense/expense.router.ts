@@ -5,28 +5,38 @@ import { pool } from '../../config/database';
 import { aiOcrService } from '../ai_ocr/ai_ocr.service';
 import { taxService } from '../tax/tax.service';
 import { v4 as uuidv4 } from 'uuid';
+import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 const router = Router();
 
-// 증빙 s3Key(evidence_file_id) → 조회용 이미지 URL.
-// 새 의존성 없이 환경변수로 공개 URL을 구성한다.
-// 우선순위: S3_PUBLIC_BASE_URL(CloudFront 등) > S3 버킷 퍼블릭 URL.
-const S3_PUBLIC_BASE =
-  process.env.S3_PUBLIC_BASE_URL ??
-  (process.env.S3_BUCKET_NAME
-    ? `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION || 'ap-northeast-2'}.amazonaws.com`
-    : '');
+// 증빙 s3Key(evidence_file_id) → 브라우저 조회용 이미지 URL.
+// 영수증 객체는 비공개이므로(버킷 퍼블릭 차단) presigned URL을 발급해
+// 자격증명 없는 브라우저에서도 시간제한 동안 안전하게 접근할 수 있게 한다.
+// S3 접근은 EC2 IAM Role 자격증명을 사용한다(별도 Access Key 불필요).
+const S3_BUCKET = process.env.S3_BUCKET_NAME;
+const AWS_REGION = process.env.AWS_REGION || 'ap-northeast-2';
+const PRESIGN_TTL = Number(process.env.S3_PRESIGN_TTL_SECONDS || 3600); // 기본 1시간
+const s3Client = S3_BUCKET ? new S3Client({ region: AWS_REGION }) : null;
 
-function withImageUrl<T extends { evidence_file_id?: string | null }>(row: T) {
-  const key = row.evidence_file_id;
-  const imageUrl = !key
-    ? null
-    : /^https?:\/\//.test(key)
-      ? key
-      : S3_PUBLIC_BASE
-        ? `${S3_PUBLIC_BASE}/${key}`
-        : null;
-  return { ...row, image_url: imageUrl };
+async function resolveImageUrl(key?: string | null): Promise<string | null> {
+  if (!key) return null;
+  // 이미 완전한 URL이 저장된 경우(레거시) 그대로 사용한다.
+  if (/^https?:\/\//.test(key)) return key;
+  if (!s3Client || !S3_BUCKET) return null;
+  try {
+    return await getSignedUrl(
+      s3Client,
+      new GetObjectCommand({ Bucket: S3_BUCKET, Key: key }),
+      { expiresIn: PRESIGN_TTL },
+    );
+  } catch {
+    return null;
+  }
+}
+
+async function withImageUrl<T extends { evidence_file_id?: string | null }>(row: T) {
+  return { ...row, image_url: await resolveImageUrl(row.evidence_file_id) };
 }
 
 router.get('/', authenticateJWT, asyncHandler(async (req: AuthRequest, res: Response) => {
@@ -36,7 +46,8 @@ router.get('/', authenticateJWT, asyncHandler(async (req: AuthRequest, res: Resp
   if (projectId) { params.push(projectId); query += ` AND project_id = $${params.length}`; }
   if (status && status !== 'all') { params.push(status); query += ` AND status = $${params.length}`; }
   query += ' ORDER BY created_at DESC';
-  res.status(200).json((await pool.query(query, params)).rows.map(withImageUrl));
+  const { rows } = await pool.query(query, params);
+  res.status(200).json(await Promise.all(rows.map(withImageUrl)));
 }));
 
 router.get('/summary', authenticateJWT, asyncHandler(async (req: AuthRequest, res: Response) => {
@@ -63,7 +74,7 @@ router.patch('/:expenseId/approve', authenticateJWT, asyncHandler(async (req: Au
     [date, amount, categoryId, description, merchant, payerName, req.params.expenseId],
   );
   if (result.rows.length === 0) return res.status(404).json({ error: '지출을 찾을 수 없습니다.' });
-  res.status(200).json(result.rows[0]);
+  res.status(200).json(await withImageUrl(result.rows[0]));
 }));
 
 router.patch('/:expenseId/reject', authenticateJWT, asyncHandler(async (req: AuthRequest, res: Response) => {
@@ -73,7 +84,7 @@ router.patch('/:expenseId/reject', authenticateJWT, asyncHandler(async (req: Aut
     [reason || '관리자 반려', req.params.expenseId],
   );
   if (result.rows.length === 0) return res.status(404).json({ error: '지출을 찾을 수 없습니다.' });
-  res.status(200).json(result.rows[0]);
+  res.status(200).json(await withImageUrl(result.rows[0]));
 }));
 
 router.patch('/:expenseId/tax-review', authenticateJWT, asyncHandler(async (req: AuthRequest, res: Response) => {

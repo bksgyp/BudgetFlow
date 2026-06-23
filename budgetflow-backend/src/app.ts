@@ -30,7 +30,9 @@ try {
 
 app.use('/api/auth', authRouter);
 app.use('/api/projects', authenticateJWT, projectRouter);
-app.use('/api/projects', authenticateJWT, categoryRouter);
+// 예산 카테고리는 프론트엔드가 /api/budget-categories 로 호출한다.
+// (이전에는 /api/projects 에 마운트되어 projectRouter 의 GET '/' 에 가려져 도달 불가했다.)
+app.use('/api/budget-categories', authenticateJWT, categoryRouter);
 app.use('/api/projects', authenticateJWT, templateRouter);
 app.use('/api/projects', authenticateJWT, exportRouter);
 app.use('/api/projects/:projectId/tax', authenticateJWT, taxRouter);
