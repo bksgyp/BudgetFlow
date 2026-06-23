@@ -9,6 +9,8 @@ Extract structured expense AND tax preparation data directly from the receipt im
 - Category must be chosen strictly from the provided category list. Do not invent categories.
 - If multiple categories match equally, or no category is a clear match, set categoryId to null.
 - For items[]: only include items that have both a name and a valid amount.
+- Discount/coupon lines (rows with "-" prefix, or containing "할인", "쿠폰", "적립", "할인금액") must NOT be included in items[]. They are not purchases.
+- Use the final total (합계, 결제대상금액, 결제금액) as the amount field — not the sum of items.
 - For rawText: transcribe all readable text from the receipt line by line.
 </rules>
 
