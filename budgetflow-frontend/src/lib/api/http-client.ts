@@ -1,4 +1,12 @@
-const BASE_URL = process.env.NEXT_PUBLIC_BUDGETFLOW_API_BASE_URL ?? "";
+// Amplify 등 일부 환경은 빈 환경변수를 허용하지 않는다.
+// 그런 경우 값에 "/" 를 넣으면 동일 출처(상대경로)로 동작하도록 정규화한다.
+// 절대 URL을 주면 끝 슬래시를 제거해 그 호스트로 직접 호출한다.
+const RAW_BASE_URL = process.env.NEXT_PUBLIC_BUDGETFLOW_API_BASE_URL ?? "";
+const BASE_URL = (() => {
+  const value = RAW_BASE_URL.trim();
+  if (value === "" || value === "/") return ""; // 상대경로(동일 출처) → Amplify 프록시
+  return value.replace(/\/+$/, ""); // 절대 URL 끝 슬래시 제거
+})();
 
 // 실데이터 / 세무 API 활성화는 명시 플래그로 제어한다.
 // BASE_URL이 비어 있으면 상대경로(/api/*)로 동일 출처 호출 → Amplify 리버스 프록시가

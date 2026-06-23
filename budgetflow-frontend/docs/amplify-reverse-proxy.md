@@ -13,11 +13,13 @@ HTTP 백엔드로 프록시한다. 브라우저 입장에서 동일 출처 HTTPS
 
 ## 2) Amplify 환경변수 (Amplify 콘솔 → App settings → Environment variables)
 ```
-NEXT_PUBLIC_BUDGETFLOW_API_BASE_URL=        # 비워둔다 (상대경로/프록시 사용)
+NEXT_PUBLIC_BUDGETFLOW_API_BASE_URL=/      # Amplify가 빈 값을 막으면 "/" 입력(상대경로로 정규화됨). 또는 변수 자체를 삭제해도 됨.
 NEXT_PUBLIC_BUDGETFLOW_LIVE_DATA=true
 NEXT_PUBLIC_BUDGETFLOW_TAX_API_ENABLED=true
 ```
-변경 후 재배포(빌드)해야 `NEXT_PUBLIC_*` 가 정적 번들에 반영된다.
+- Amplify 콘솔은 빈 값을 허용하지 않으므로 `/` 한 글자를 넣는다. 코드가 `/`·공백을 상대경로("")로 정규화한다.
+- 변수를 아예 등록하지 않아도(undefined) 동일하게 상대경로로 동작한다.
+- 변경 후 재배포(빌드)해야 `NEXT_PUBLIC_*` 가 정적 번들에 반영된다.
 
 ## 3) Amplify Rewrite 규칙 (Amplify 콘솔 → Hosting → Rewrites and redirects)
 | Source address | Target address | Type |
