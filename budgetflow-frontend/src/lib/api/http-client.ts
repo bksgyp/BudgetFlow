@@ -1,18 +1,24 @@
-const BASE_URL = process.env.NEXT_PUBLIC_BUDGETFLOW_API_BASE_URL ?? "";
-export const isApiConfigured = Boolean(BASE_URL);
+// Amplify 등 일부 환경은 빈 환경변수를 허용하지 않는다.
+// 그런 경우 값에 "/" 를 넣으면 동일 출처(상대경로)로 동작하도록 정규화한다.
+// 절대 URL을 주면 끝 슬래시를 제거해 그 호스트로 직접 호출한다.
+const RAW_BASE_URL = process.env.NEXT_PUBLIC_BUDGETFLOW_API_BASE_URL ?? "";
+const BASE_URL = (() => {
+  const value = RAW_BASE_URL.trim();
+  if (value === "" || value === "/") return ""; // 상대경로(동일 출처) → Amplify 프록시
+  return value.replace(/\/+$/, ""); // 절대 URL 끝 슬래시 제거
+})();
 
-// 세무(TaxOps) 엔드포인트는 아직 백엔드에 구현되지 않았다.
-// 백엔드가 /tax/* API를 제공하기 전까지는 항상 프론트 mock 세무 데이터를 사용한다.
-// 백엔드 준비 후 NEXT_PUBLIC_BUDGETFLOW_TAX_API_ENABLED=true 로 전환한다.
+// 실데이터 / 세무 API 활성화는 명시 플래그로 제어한다.
+// BASE_URL이 비어 있으면 상대경로(/api/*)로 동일 출처 호출 → Amplify 리버스 프록시가
+// HTTP 백엔드로 전달한다(Mixed Content·CORS 회피). 절대 URL을 주면 그 호스트로 직접 호출.
+export const isLiveDataEnabled =
+  process.env.NEXT_PUBLIC_BUDGETFLOW_LIVE_DATA === "true";
+
 export const isTaxApiEnabled =
-  isApiConfigured &&
   process.env.NEXT_PUBLIC_BUDGETFLOW_TAX_API_ENABLED === "true";
 
-// 데이터 소스 스위치. 백엔드가 미완인 현재는 기본 false → 항상 mock 데이터를 사용한다.
-// 백엔드가 준비되면 NEXT_PUBLIC_BUDGETFLOW_LIVE_DATA=true 로 실제 데이터로 전환한다.
-export const isLiveDataEnabled =
-  isApiConfigured &&
-  process.env.NEXT_PUBLIC_BUDGETFLOW_LIVE_DATA === "true";
+// 백엔드 연동 여부: 라이브 플래그가 켜졌거나(동일 출처 프록시 포함) 절대 URL이 설정된 경우.
+export const isApiConfigured = isLiveDataEnabled || Boolean(BASE_URL);
 
 const TOKEN_KEY = "budgetflow.token";
 
