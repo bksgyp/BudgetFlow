@@ -20,6 +20,7 @@ interface LLMOcrRaw {
   amount: number | null;
   description: string;
   categoryId: string | null;
+  categoryCandidates: Array<{ id: string; name: string }> | null;
   items: Array<{ name: string; quantity: number | null; unitPrice: number | null; amount: number }>;
   confidence: { date: boolean; merchant: boolean; amount: boolean; items: boolean; category: boolean };
   rawText: string;
@@ -93,7 +94,7 @@ function taxOpsFailureDefaults(): Pick<OcrOutput,
 function ocrFailureOutput(input: OcrInput, reason: string): OcrOutput {
   return {
     inputType: input.inputType, date: null, merchant: null, amount: null,
-    description: "영수증", categoryId: null, categoryName: null, payerName: null,
+    description: "영수증", categoryId: null, categoryName: null, categoryCandidates: null, payerName: null,
     evidenceStatus: EvidenceStatus.OCR_FAILED, evidenceFileId: input.evidenceFileId,
     items: [], aiConfidence: 0, needsReview: true,
     missingFields: ["date", "merchant", "amount", "category"],
@@ -138,6 +139,7 @@ export async function runOcrPipeline(input: OcrInput): Promise<OcrOutput> {
     date: llmRaw.date, merchant: llmRaw.merchant, amount: llmRaw.amount,
     description: llmRaw.description || (llmRaw.merchant ? `${llmRaw.merchant} 영수증` : "영수증"),
     categoryId: llmRaw.categoryId, categoryName,
+    categoryCandidates: (llmRaw.categoryCandidates as any) ?? null,
     payerName: null, evidenceStatus: EvidenceStatus.OCR_COMPLETED,
     evidenceFileId: input.evidenceFileId, items: llmRaw.items,
     aiConfidence, needsReview: needsReview || !llmRaw.amount,

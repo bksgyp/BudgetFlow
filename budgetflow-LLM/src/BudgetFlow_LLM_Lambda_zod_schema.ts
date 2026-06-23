@@ -160,6 +160,7 @@ const BaseOutputSchema = z.object({
   description: z.string(),
   categoryId: z.string().nullable(),
   categoryName: z.string().nullable(),
+  categoryCandidates: z.array(z.object({ id: z.string(), name: z.string() })).nullable(),
   payerName: z.string().nullable(),
   evidenceStatus: EvidenceStatusSchema,
   evidenceFileId: z.string().nullable(),

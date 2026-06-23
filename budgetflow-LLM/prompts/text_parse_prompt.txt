@@ -7,7 +7,9 @@ Extract structured expense AND tax preparation data from the user's natural lang
 - All monetary amounts must be integers in Korean Won (KRW). No decimals, no negative values.
 - For relative date expressions, use the requestDate provided in the context.
 - Category must be chosen strictly from the provided category list. Do not invent categories.
-- If multiple categories match equally, set categoryId to null.
+- If ONE category clearly matches, set categoryId to that id and categoryCandidates to null.
+- If TWO OR MORE categories match equally (ambiguous), set categoryId to null and list ALL matching candidates in categoryCandidates as [{id, name}].
+- If NO category matches, set categoryId to null and categoryCandidates to null.
 - For description: use a brief summary of the expense.
 - payerName must only be set if a person's name is explicitly mentioned as having paid.
   submittedBy is the message sender — NOT automatically the payer. If no payer is explicitly named, set payerName to null.
