@@ -89,6 +89,7 @@ type BackendExpense = {
   categoryId?: string;
   date?: string;
   description?: string;
+  items?: Expense["items"];
   reviewReason?: string;
   evidenceStatus?: string;
   evidenceFileId?: string;
@@ -209,10 +210,11 @@ function toExpense(r: BackendExpense): Expense {
     id: r.id,
     projectId: r.projectId ?? "",
     categoryId: r.categoryId ?? "",
-    date: r.date ?? now.slice(0, 10),
+    date: (r.date ?? now).slice(0, 10),
     amount: Number(r.amount),
     merchant: r.merchant,
     description: r.description ?? "",
+    items: Array.isArray(r.items) ? r.items : [],
     payerName: r.payerName,
     inputChannel: "slack",
     slackUserId: "",

@@ -130,8 +130,8 @@ router.post('/', asyncHandler(async (req: AuthRequest, res: Response) => {
       `INSERT INTO expenses (id,project_id,slack_user_id,date,amount,merchant,description,
          category_id,payer_name,evidence_status,ai_confidence,status,missing_fields,review_reason,
          tax_invoice_type,payment_method,business_purpose,vat_class,vat_reason,deductibility,
-         tax_review_status,tax_review_reason,ocr_quality,ocr_failure_mode,tax_period,slack_ts)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26)
+         tax_review_status,tax_review_reason,ocr_quality,ocr_failure_mode,tax_period,slack_ts,items)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27::jsonb)
        RETURNING *`,
       [`exp_${uuidv4()}`, projectId, slackUserId, llm.date ?? today, llm.amount,
        llm.merchant ?? '미확인', llm.description, llm.categoryId,
@@ -142,7 +142,8 @@ router.post('/', asyncHandler(async (req: AuthRequest, res: Response) => {
        llm.businessPurpose ?? businessPurpose ?? null,
        llm.vatClass ?? 'unknown', llm.vatReason ?? null, llm.deductibility ?? 'unknown',
        llm.taxReviewStatus ?? 'needs_review', llm.taxReviewReason ?? null,
-       llm.ocrQuality ?? 'good', llm.ocrFailureMode ?? null, period, slackTs ?? null],
+       llm.ocrQuality ?? 'good', llm.ocrFailureMode ?? null, period, slackTs ?? null,
+       JSON.stringify(llm.items ?? [])],
     );
     return res.status(200).json(result.rows[0]);
   }
@@ -159,8 +160,8 @@ router.post('/', asyncHandler(async (req: AuthRequest, res: Response) => {
       `INSERT INTO expenses (id,project_id,slack_user_id,date,amount,merchant,description,
          category_id,payer_name,evidence_status,evidence_file_id,ai_confidence,status,missing_fields,review_reason,
          tax_invoice_type,payment_method,business_purpose,vat_class,vat_reason,deductibility,
-         tax_review_status,tax_review_reason,ocr_quality,ocr_failure_mode,tax_period,slack_ts)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27)
+         tax_review_status,tax_review_reason,ocr_quality,ocr_failure_mode,tax_period,slack_ts,items)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28::jsonb)
        RETURNING *`,
       [`exp_${uuidv4()}`, projectId, slackUserId, llm.date ?? today, llm.amount,
        llm.merchant ?? '미확인', llm.description, llm.categoryId,
@@ -172,7 +173,8 @@ router.post('/', asyncHandler(async (req: AuthRequest, res: Response) => {
        llm.vatClass ?? 'unknown', llm.vatReason ?? null, llm.deductibility ?? 'unknown',
        llm.taxReviewStatus ?? 'needs_review', llm.taxReviewReason ?? null,
        llm.ocrQuality ?? (llm.evidenceStatus === 'ocr_failed' ? 'failed' : 'good'),
-       llm.ocrFailureMode ?? null, period, slackTs ?? null],
+       llm.ocrFailureMode ?? null, period, slackTs ?? null,
+       JSON.stringify(llm.items ?? [])],
     );
     return res.status(200).json(result.rows[0]);
   }

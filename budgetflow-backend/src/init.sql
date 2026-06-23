@@ -44,6 +44,7 @@ CREATE TABLE expenses (
     ai_confidence NUMERIC(3, 2) NOT NULL DEFAULT 0.0, -- 소수점 2자리까지 신뢰도 표현
     missing_fields TEXT[] NOT NULL DEFAULT '{}',
     review_reason TEXT,
+    items JSONB NOT NULL DEFAULT '[]'::jsonb, -- 상세 품목/수량/단가 (LLM 추출)
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
