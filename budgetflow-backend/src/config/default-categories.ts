@@ -57,3 +57,37 @@ export async function ensureDefaultCategoriesAllProjects(pool: Pool): Promise<vo
     await seedDefaultCategoriesForProject(pool, row.id);
   }
 }
+
+/**
+ * 레거시(비표준) 카테고리 → 표준 카테고리 key 재매핑 allowlist.
+ * 비표준 카테고리를 일괄 삭제하면 관리자가 직접 만든 카테고리까지 지워질 수 있으므로,
+ * 반드시 명시한 id만 정리한다.
+ */
+export const LEGACY_CATEGORY_REMAP: { legacyId: string; toKey: string }[] = [
+  { legacyId: 'cat_01', toKey: 'welfare' }, // proj_test '다과비' → 복리후생비
+];
+
+/**
+ * allowlist에 명시된 레거시 카테고리를 표준 카테고리로 재매핑하고 삭제한다(멱등).
+ * - 해당 카테고리를 참조하는 expenses.category_id를 같은 프로젝트의 표준 카테고리로 옮긴다.
+ * - 이후 레거시 카테고리 행을 삭제한다.
+ * 삭제 후에는 대상이 없어 자동으로 no-op이 된다.
+ */
+export async function remapLegacyCategories(pool: Pool): Promise<void> {
+  for (const { legacyId, toKey } of LEGACY_CATEGORY_REMAP) {
+    const { rows } = await pool.query<{ id: string; project_id: string }>(
+      'SELECT id, project_id FROM budget_categories WHERE id = $1',
+      [legacyId],
+    );
+    for (const row of rows) {
+      const targetId = categoryId(toKey, row.project_id);
+      // 표준 카테고리가 없으면 먼저 보장
+      await seedDefaultCategoriesForProject(pool, row.project_id);
+      await pool.query(
+        'UPDATE expenses SET category_id = $1, updated_at = NOW() WHERE category_id = $2',
+        [targetId, legacyId],
+      );
+      await pool.query('DELETE FROM budget_categories WHERE id = $1', [legacyId]);
+    }
+  }
+}
