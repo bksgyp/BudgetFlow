@@ -113,6 +113,7 @@ app.post("/analyze/text", async (req: Request, res: Response) => {
     description:    (llmRaw.description as string) || input.text,
     categoryId:     llmRaw.categoryId ?? null,
     categoryName:   llmRaw.categoryName ?? null,
+    categoryCandidates: (llmRaw.categoryCandidates as any) ?? null,
     payerName:      llmRaw.payerName ?? null,
     evidenceStatus: EvidenceStatus.NONE,
     evidenceFileId: null,

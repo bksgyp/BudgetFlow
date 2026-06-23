@@ -60,7 +60,8 @@ const TEXT_PARSE_TOOL: Anthropic.Tool = {
       amount:      { type: ["integer", "null"], description: "Integer KRW. null if cannot be determined." },
       merchant:    { type: ["string", "null"], description: "Store/vendor name. null if not mentioned." },
       description: { type: "string", description: "Brief summary of the expense." },
-      categoryId:  { type: ["string", "null"], description: "Must match provided category IDs. null if no match." },
+      categoryId:  { type: ["string", "null"], description: "Must match provided category IDs. null if no match or ambiguous." },
+      categoryCandidates: { type: ["array", "null"], items: { type: "object", properties: { id: { type: "string" }, name: { type: "string" } }, required: ["id", "name"] }, description: "When 2+ categories match equally, list ALL candidates here and set categoryId to null." },
       payerName:   { type: ["string", "null"], description: "Person who paid. null if not explicitly mentioned." },
       confidence: {
         type: "object",
@@ -72,7 +73,7 @@ const TEXT_PARSE_TOOL: Anthropic.Tool = {
       },
       ...TAX_OPS_PROPERTIES,
     },
-    required: ["date", "amount", "merchant", "description", "categoryId", "payerName", "confidence",
+    required: ["date", "amount", "merchant", "description", "categoryId", "categoryCandidates", "payerName", "confidence",
                "taxInvoiceType", "paymentMethod", "businessPurpose", "vatClass", "vatReason",
                "deductibility", "taxReviewStatus", "taxReviewReason"],
   },
@@ -88,7 +89,8 @@ const OCR_TOOL: Anthropic.Tool = {
       merchant:    { type: ["string", "null"], description: "Store name as printed. null if not visible." },
       amount:      { type: ["integer", "null"], description: "Total payment as integer KRW. null if not found." },
       description: { type: "string", description: "Auto-generated description." },
-      categoryId:  { type: ["string", "null"], description: "Must match provided category IDs. null if no match." },
+      categoryId:  { type: ["string", "null"], description: "Must match provided category IDs. null if no match or ambiguous." },
+      categoryCandidates: { type: ["array", "null"], items: { type: "object", properties: { id: { type: "string" }, name: { type: "string" } }, required: ["id", "name"] }, description: "When 2+ categories match equally, list ALL candidates here and set categoryId to null." },
       items: {
         type: "array",
         items: {
@@ -131,7 +133,7 @@ const OCR_TOOL: Anthropic.Tool = {
         description: "영수증에 공급가액/부가세/합계가 분리돼 있을 때 추출. 없으면 null.",
       },
     },
-    required: ["date", "merchant", "amount", "description", "categoryId", "items", "confidence", "rawText",
+    required: ["date", "merchant", "amount", "description", "categoryId", "categoryCandidates", "items", "confidence", "rawText",
                "taxInvoiceType", "paymentMethod", "businessPurpose", "vatClass", "vatReason",
                "deductibility", "taxReviewStatus", "taxReviewReason",
                "ocrQuality", "ocrFailureMode", "extractedTaxFields"],
