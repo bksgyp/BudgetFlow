@@ -2,14 +2,25 @@
 
 import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { AlertTriangle, Check, CircleX, ExternalLink, ImageOff } from "lucide-react";
+import { AlertTriangle, Check, CircleX, ExternalLink, ImageOff, Trash2 } from "lucide-react";
 import { useForm, Controller } from "react-hook-form";
 
 import { StatusBadge } from "@/components/budgetflow-ui";
 import { ApprovalConfirmDialog } from "@/components/expenses/approval-confirm-dialog";
 import { TextArea, TextInput } from "@/components/form-controls";
 import { FormField } from "@/components/form-field";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import {
   Select,
   SelectContent,
@@ -32,6 +43,7 @@ import {
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import {
   useApproveExpense,
+  useDeleteExpense,
   useRejectExpense,
 } from "@/lib/hooks/use-budgetflow";
 import { evidenceStatusLabel, expenseStatusLabel } from "@/lib/status";
@@ -55,6 +67,7 @@ export function ExpenseDetailModal({
   const [confirmVariant, setConfirmVariant] = useState<ConfirmVariant>(null);
   const approveExpense = useApproveExpense(projectId);
   const rejectExpense = useRejectExpense(projectId);
+  const deleteExpense = useDeleteExpense(projectId);
 
   const form = useForm<ExpenseReviewInput, undefined, ExpenseReviewValues>({
     resolver: zodResolver(expenseReviewSchema),
@@ -69,7 +82,16 @@ export function ExpenseDetailModal({
       : { amount: 0, categoryId: "", date: "", description: "", expenseId: "" },
   });
 
-  const isMutating = approveExpense.isPending || rejectExpense.isPending;
+  const isMutating =
+    approveExpense.isPending ||
+    rejectExpense.isPending ||
+    deleteExpense.isPending;
+
+  const handleDelete = async () => {
+    if (!expense) return;
+    await deleteExpense.mutateAsync(expense.id);
+    onClose();
+  };
 
   const handleApproveConfirm = form.handleSubmit(async (values) => {
     await approveExpense.mutateAsync(values);
@@ -280,6 +302,56 @@ export function ExpenseDetailModal({
                     </Button>
                   </div>
                 </form>
+
+                <div className="flex flex-col gap-2 border-t border-[var(--bf-border-subtle)] pt-3 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-xs leading-5 text-[var(--bf-text-muted)]">
+                    잘못 등록된 지출은 삭제할 수 있습니다. 삭제하면 되돌릴 수
+                    없습니다.
+                  </p>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        className="text-[var(--bf-support-error-fg)] hover:bg-[var(--bf-support-error-bg)] hover:text-[var(--bf-support-error-fg)]"
+                        disabled={isMutating}
+                        size="sm"
+                        type="button"
+                        variant="ghost"
+                      >
+                        <Trash2 className="mr-1.5 size-4" />
+                        지출 삭제
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>이 지출을 삭제할까요?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          <span className="font-medium text-[var(--bf-text-primary)]">
+                            {expense.merchant}
+                          </span>{" "}
+                          · {formatCurrency(expense.amount)} 지출이 영구
+                          삭제됩니다. 연결된 영수증 증빙도 함께 삭제되며 되돌릴
+                          수 없습니다.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel disabled={isMutating}>
+                          취소
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                          className={buttonVariants({ variant: "destructive" })}
+                          disabled={isMutating}
+                          onClick={(event) => {
+                            event.preventDefault();
+                            void handleDelete();
+                          }}
+                        >
+                          <Trash2 className="mr-1.5 size-4" />
+                          삭제
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
               </div>
             </>
           )}

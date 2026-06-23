@@ -87,6 +87,16 @@ router.patch('/:expenseId/reject', authenticateJWT, asyncHandler(async (req: Aut
   res.status(200).json(await withImageUrl(result.rows[0]));
 }));
 
+// 지출 삭제 — 연결된 evidence_files는 FK ON DELETE CASCADE로 함께 제거된다.
+router.delete('/:expenseId', authenticateJWT, asyncHandler(async (req: AuthRequest, res: Response) => {
+  const result = await pool.query(
+    'DELETE FROM expenses WHERE id = $1 RETURNING id',
+    [req.params.expenseId],
+  );
+  if (result.rows.length === 0) return res.status(404).json({ error: '지출을 찾을 수 없습니다.' });
+  res.status(200).json({ id: result.rows[0].id, deleted: true });
+}));
+
 router.patch('/:expenseId/tax-review', authenticateJWT, asyncHandler(async (req: AuthRequest, res: Response) => {
   const result = await taxService.updateTaxReview(req.params.expenseId as string, req.body);
   if (!result) return res.status(404).json({ error: '지출을 찾을 수 없습니다.' });

@@ -1035,6 +1035,16 @@ export async function rejectExpense(
   return clone(updated);
 }
 
+export async function deleteExpense(expenseId: string): Promise<{ id: string }> {
+  if (liveApi()) {
+    return http.delete<{ id: string }>(`/api/expenses/${expenseId}`);
+  }
+
+  const expenseIndex = findExpenseIndex(expenseId);
+  mockExpenses.splice(expenseIndex, 1);
+  return clone({ id: expenseId });
+}
+
 export async function getExpenseSummary(
   projectId: string,
 ): Promise<ExpenseSummary> {

@@ -19,6 +19,7 @@ import {
   getTaxPeriods,
   getTaxReadiness,
   rejectExpense,
+  deleteExpense,
   recalculateTaxPeriod,
   requestAccountantPacketExport,
   requestExpenseReportExport,
@@ -183,6 +184,25 @@ export function useRejectExpense(projectId: string) {
       });
       void queryClient.invalidateQueries({
         queryKey: budgetflowQueryKeys.expenseSummary(projectId),
+      });
+    },
+  });
+}
+
+export function useDeleteExpense(projectId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (expenseId: string) => deleteExpense(expenseId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: budgetflowQueryKeys.expensesByProject(projectId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: budgetflowQueryKeys.expenseSummary(projectId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: budgetflowQueryKeys.budgetCategories(projectId),
       });
     },
   });
