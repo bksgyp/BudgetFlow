@@ -135,6 +135,13 @@ export type EvidenceFile = {
   createdAt: string;
 };
 
+export type ExpenseItem = {
+  name: string;
+  quantity: number | null;
+  unitPrice: number | null;
+  amount: number;
+};
+
 export type Expense = {
   id: string;
   projectId: string;
@@ -143,6 +150,7 @@ export type Expense = {
   amount: number;
   merchant: string;
   description: string;
+  items?: ExpenseItem[];
   payerName: string;
   inputChannel: "slack";
   slackUserId: string;
