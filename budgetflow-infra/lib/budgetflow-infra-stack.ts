@@ -53,6 +53,17 @@ export class BudgetflowInfraStack extends cdk.Stack {
       ec2.Port.tcp(3000),
       'Allow Express API access'
     );
+    // HTTPS 종단(Caddy + Let's Encrypt)용. 80=ACME HTTP-01 챌린지, 443=HTTPS 서빙.
+    ec2SecurityGroup.addIngressRule(
+      ec2.Peer.anyIpv4(),
+      ec2.Port.tcp(80),
+      'Allow HTTP for ACME (Let\u0027s Encrypt) challenge'
+    );
+    ec2SecurityGroup.addIngressRule(
+      ec2.Peer.anyIpv4(),
+      ec2.Port.tcp(443),
+      'Allow HTTPS (Caddy reverse proxy to Express:3000)'
+    );
 
     // 2-b. RDS 데이터베이스용 보안 그룹
     const rdsSecurityGroup = new ec2.SecurityGroup(this, 'PostgreSQLSG', {
