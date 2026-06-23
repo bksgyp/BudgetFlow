@@ -623,7 +623,7 @@ function ExportControls({
         </p>
       </SectionToolbar>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+      <div className="mt-4 grid gap-3">
         <Callout
           action={
             <StatusBadge tone={needsReviewCount > 0 ? "review" : "approved"}>

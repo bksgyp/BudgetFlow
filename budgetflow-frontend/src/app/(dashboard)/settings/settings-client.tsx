@@ -188,7 +188,7 @@ function SettingsClientInner({ projectId }: { projectId: string }) {
     <section className="bf-page-stack">
       <PageHeader
         eyebrow="Settings"
-        lead="기관 제출용 파일을 만들기 위해 양식 업로드와 관리자 확정 단계를 분리했습니다. AI 추천은 출발점이고 최종 매핑은 사람이 확정합니다."
+        lead="양식 업로드·컬럼 매핑·예산 카테고리를 한 곳에서 관리합니다."
         title="엑셀 양식, 컬럼 매핑, 예산 카테고리"
       />
 
@@ -441,25 +441,6 @@ function SettingsClientInner({ projectId }: { projectId: string }) {
               ))}
             </div>
           </Panel>
-
-          <Panel className="bf-panel-pad">
-            <h2 className="bf-panel-title">분류 키워드</h2>
-            <div className="mt-4 space-y-2">
-              {(categoriesQuery.data ?? []).map((category) => (
-                <div
-                  className="rounded-lg border border-[var(--bf-border-subtle)] bg-[var(--bf-layer-02)] px-3 py-2"
-                  key={category.id}
-                >
-                  <strong className="text-sm font-semibold text-[var(--bf-text-primary)]">
-                    {category.name}
-                  </strong>
-                  <p className="mt-1 text-sm leading-6 text-[var(--bf-text-secondary)]">
-                    {category.keywords.join(", ")}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </Panel>
         </aside>
       </section>
     </section>
@@ -552,7 +533,7 @@ function TemplateUploadPanel({
       <SectionToolbar
         actions={
           <div className="flex flex-col gap-2 sm:min-w-80">
-            <label className="flex min-h-10 cursor-pointer items-center justify-between gap-3 rounded-lg border border-[var(--bf-border-subtle)] bg-[var(--bf-layer-01)] px-3 text-sm hover:bg-[var(--bf-layer-hover)]">
+            <label className="flex h-11 cursor-pointer items-center justify-between gap-3 rounded-lg border border-[var(--bf-border-subtle)] bg-[var(--bf-layer-01)] px-3 text-sm hover:bg-[var(--bf-layer-hover)] sm:h-10">
               <span className="truncate text-[var(--bf-text-secondary)]">
                 {fileName || "엑셀 파일을 선택하세요"}
               </span>
@@ -569,6 +550,7 @@ function TemplateUploadPanel({
               />
             </label>
             <Button
+              className="w-full"
               disabled={isPending}
               onClick={() => void onUpload()}
               type="button"
