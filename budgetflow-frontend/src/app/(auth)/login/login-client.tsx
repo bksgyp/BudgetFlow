@@ -80,7 +80,7 @@ export function LoginClient() {
                 />
                 <button
                   aria-label={showPassword ? "비밀번호 숨기기" : "비밀번호 보기"}
-                  className="absolute right-0 top-0 inline-grid size-11 place-items-center rounded-md text-[var(--bf-text-secondary)] hover:bg-[var(--bf-layer-hover)] hover:text-[var(--bf-text-primary)] focus-visible:ring-3 focus-visible:ring-ring/50"
+                  className="absolute inset-y-0 right-0 inline-grid w-11 place-items-center rounded-md text-[var(--bf-text-secondary)] hover:text-[var(--bf-text-primary)] focus-visible:ring-3 focus-visible:ring-ring/50 sm:w-9"
                   onClick={() => setShowPassword((current) => !current)}
                   type="button"
                 >

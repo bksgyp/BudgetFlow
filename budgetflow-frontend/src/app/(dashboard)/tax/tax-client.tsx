@@ -36,6 +36,8 @@ import {
 } from "@/components/ui/select";
 import type { Expense, TaxFinding } from "@/lib/domain";
 import { formatCurrency, formatDate } from "@/lib/formatters";
+import { evidenceStatusLabel } from "@/lib/status";
+import { evidenceStatusTone } from "@/lib/status-tone";
 import { useSelectedProject } from "@/lib/hooks/use-selected-project";
 import {
   useExpenses,
@@ -485,15 +487,15 @@ function TaxFindingTable({
   return (
     <>
       <div className="hidden overflow-x-auto md:block">
-      <table className="w-full min-w-[760px] text-left text-sm">
+      <table className="w-full min-w-[760px] table-fixed text-left text-sm">
         <thead className="border-b border-[var(--bf-border-subtle)] bg-[var(--bf-layer-02)] text-xs text-[var(--bf-text-secondary)]">
           <tr>
-            <th className="px-4 py-3 font-semibold">지출</th>
-            <th className="px-4 py-3 text-right font-semibold">금액</th>
-            <th className="px-4 py-3 font-semibold">증빙</th>
-            <th className="px-4 py-3 font-semibold">VAT 후보</th>
-            <th className="px-4 py-3 font-semibold">위험 사유</th>
-            <th className="px-4 py-3 font-semibold">처리</th>
+            <th className="w-[24%] px-4 py-3 font-semibold">지출</th>
+            <th className="w-[12%] px-4 py-3 text-right font-semibold">금액</th>
+            <th className="w-[13%] px-4 py-3 font-semibold">증빙</th>
+            <th className="w-[13%] px-4 py-3 font-semibold">VAT 후보</th>
+            <th className="w-[26%] px-4 py-3 font-semibold">위험 사유</th>
+            <th className="w-[12%] px-4 py-3 font-semibold">처리</th>
           </tr>
         </thead>
         <tbody>
@@ -506,34 +508,34 @@ function TaxFindingTable({
                 className="border-b border-[var(--bf-border-subtle)]"
                 key={`${finding.id}-${index}`}
               >
-                <td className="max-w-[260px] px-4 py-3">
-                  <div className="font-semibold text-[var(--bf-text-primary)]">
+                <td className="px-4 py-3 align-top">
+                  <div className="truncate font-semibold text-[var(--bf-text-primary)]">
                     {expense.merchant}
                   </div>
                   <p className="mt-1 truncate text-xs text-[var(--bf-text-secondary)]">
                     {formatDate(expense.date)} · {expense.description}
                   </p>
                 </td>
-                <td className="px-4 py-3 text-right font-semibold tabular-nums">
+                <td className="px-4 py-3 text-right align-top font-semibold tabular-nums">
                   {formatCurrency(expense.amount)}
                 </td>
-                <td className="px-4 py-3">
-                  <StatusBadge tone={expense.evidenceStatus === "none" ? "missing" : "processing"}>
-                    {expense.ocrQuality ?? "partial"}
+                <td className="px-4 py-3 align-top">
+                  <StatusBadge tone={evidenceStatusTone[expense.evidenceStatus]}>
+                    {evidenceStatusLabel[expense.evidenceStatus]}
                   </StatusBadge>
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-4 py-3 align-top">
                   {vatClassLabel[expense.vatClass ?? "unknown"]}
                 </td>
-                <td className="max-w-[280px] px-4 py-3">
+                <td className="px-4 py-3 align-top">
                   <StatusBadge tone={findingTone[finding.severity]}>
                     {taxReviewStatusLabel[expense.taxReviewStatus ?? "needs_review"]}
                   </StatusBadge>
-                  <p className="mt-2 text-xs leading-5 text-[var(--bf-text-secondary)]">
+                  <p className="mt-2 break-keep text-xs leading-5 text-[var(--bf-text-secondary)]">
                     {finding.description}
                   </p>
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-4 py-3 align-top">
                   <Button
                     disabled={isPending}
                     onClick={() => onMarkReady(expense)}
@@ -577,9 +579,9 @@ function TaxFindingTable({
                   {taxReviewStatusLabel[expense.taxReviewStatus ?? "needs_review"]}
                 </StatusBadge>
                 <StatusBadge
-                  tone={expense.evidenceStatus === "none" ? "missing" : "processing"}
+                  tone={evidenceStatusTone[expense.evidenceStatus]}
                 >
-                  {expense.ocrQuality ?? "partial"}
+                  {evidenceStatusLabel[expense.evidenceStatus]}
                 </StatusBadge>
                 <StatusBadge>
                   {vatClassLabel[expense.vatClass ?? "unknown"]}
