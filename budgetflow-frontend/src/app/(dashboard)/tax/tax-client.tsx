@@ -487,14 +487,14 @@ function TaxFindingTable({
           </tr>
         </thead>
         <tbody>
-          {findings.map((finding) => {
+          {findings.map((finding, index) => {
             const expense = expenseById.get(finding.expenseId);
             if (!expense) return null;
 
             return (
               <tr
                 className="border-b border-[var(--bf-border-subtle)]"
-                key={finding.id}
+                key={`${finding.id}-${index}`}
               >
                 <td className="max-w-[260px] px-4 py-3">
                   <div className="font-semibold text-[var(--bf-text-primary)]">
@@ -541,11 +541,11 @@ function TaxFindingTable({
       </div>
 
       <div className="divide-y divide-[var(--bf-border-subtle)] md:hidden">
-        {findings.map((finding) => {
+        {findings.map((finding, index) => {
           const expense = expenseById.get(finding.expenseId);
           if (!expense) return null;
           return (
-            <div className="p-4" key={finding.id}>
+            <div className="p-4" key={`${finding.id}-${index}`}>
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-xs text-[var(--bf-text-muted)]">
