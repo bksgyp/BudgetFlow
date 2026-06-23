@@ -10,6 +10,7 @@ import * as dotenv from "dotenv";
 import { faker } from "@faker-js/faker/locale/ko";
 import { v4 as uuidv4 } from "uuid";
 import axios from "axios";
+import { DEFAULT_CATEGORIES, categoryId } from "../../src/config/default-categories";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 
 dotenv.config();
@@ -57,50 +58,17 @@ const DEMO_PROJECTS = [
   },
 ] as const;
 
-const DEMO_CATEGORIES = [
-  {
-    id: "dcat-food",
-    project_id: "project-aingthon",
-    name: "식비",
-    budget_limit: 800000,
-    keywords: ["식사", "점심", "저녁", "뒷풀이", "밥"],
-  },
-  {
-    id: "dcat-snack",
-    project_id: "project-aingthon",
-    name: "다과비",
-    budget_limit: 300000,
-    keywords: ["다과", "간식", "커피", "음료", "카페"],
-  },
-  {
-    id: "dcat-venue",
-    project_id: "project-aingthon",
-    name: "장소비",
-    budget_limit: 600000,
-    keywords: ["대여", "장소", "회의실", "홀", "강의실"],
-  },
-  {
-    id: "dcat-etc",
-    project_id: "project-aingthon",
-    name: "기타",
-    budget_limit: 300000,
-    keywords: ["기타", "소모품", "인쇄", "문구"],
-  },
-  {
-    id: "dcat-closed-food",
-    project_id: "project-demo-closed",
-    name: "식비",
-    budget_limit: 300000,
-    keywords: ["식사", "밥"],
-  },
-  {
-    id: "dcat-closed-etc",
-    project_id: "project-demo-closed",
-    name: "기타",
-    budget_limit: 200000,
-    keywords: ["기타"],
-  },
-];
+// 전사 공통 표준 세무 계정과목을 두 데모 프로젝트에 동일하게 생성한다.
+const DEMO_CATEGORY_PROJECTS = ["project-aingthon", "project-demo-closed"];
+const DEMO_CATEGORIES = DEMO_CATEGORY_PROJECTS.flatMap((projectId) =>
+  DEFAULT_CATEGORIES.map((c) => ({
+    id: categoryId(c.key, projectId),
+    project_id: projectId,
+    name: c.name,
+    budget_limit: 0,
+    keywords: c.keywords,
+  })),
+);
 
 // status 분포: approved 10, needs_review 5, rejected 3, created 2
 const STATUS_DISTRIBUTION: string[] = [
@@ -201,7 +169,7 @@ async function seedProjectsAndCategories(client: any) {
       [c.id, c.project_id, c.name, c.budget_limit, c.keywords],
     );
   }
-  console.log("[Seed] Phase 1+2 완료: 프로젝트 2개, 카테고리 6개");
+  console.log(`[Seed] Phase 1+2 완료: 프로젝트 2개, 카테고리 ${DEMO_CATEGORIES.length}개`);
 }
 
 // ─── Phase 3: Faker 지출 20건 ─────────────────────────────────────────────

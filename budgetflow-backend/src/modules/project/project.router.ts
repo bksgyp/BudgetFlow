@@ -2,6 +2,7 @@ import { Router, Response } from 'express';
 import { authenticateJWT, AuthRequest } from '../../middlewares/auth.middleware';
 import { asyncHandler } from '../../middlewares/asyncHandler';
 import { pool } from '../../config/database';
+import { seedDefaultCategoriesForProject } from '../../config/default-categories';
 
 const router = Router();
 
@@ -34,6 +35,8 @@ router.post('/', authenticateJWT, asyncHandler(async (req: AuthRequest, res: Res
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
     [id, organizationId, name, totalBudget, slackChannelId, cleanChannelName, templateFileName || null, mappingStatus]
   );
+  // 신규 프로젝트도 전사 공통 표준 세무 카테고리를 갖도록 자동 시드한다.
+  await seedDefaultCategoriesForProject(pool, id);
   res.status(201).json(result.rows[0]);
 }));
 
