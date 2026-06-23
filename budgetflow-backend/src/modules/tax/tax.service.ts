@@ -112,7 +112,7 @@ export const taxService = {
       [projectId, period],
     );
     const expenses = result.rows as TaxExpenseRow[];
-    return buildAccountantPacketPdf(projectName, period, expenses, generateFindings(expenses), calcFeeImpact());
+    return buildAccountantPacketPdf(projectName, period, expenses, generateFindings(expenses));
   },
 
   // 직접신고용 CSV (홈택스 신용카드매출전표등 수령명세서 형식)
