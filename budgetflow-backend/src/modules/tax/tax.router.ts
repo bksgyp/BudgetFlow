@@ -27,12 +27,27 @@ router.get('/periods/:period/fee-impact', asyncHandler(async (_req: AuthRequest,
 }));
 
 router.post('/periods/:period/exports/accountant-packet', asyncHandler(async (req: AuthRequest, res: Response) => {
-  const content = await taxService.buildAccountantPacket(req.params.projectId as string, req.params.period as string);
-  res.status(200).json({ type: 'accountant_packet', period: req.params.period, content });
+  const projectId = req.params.projectId as string;
+  const period = req.params.period as string;
+  const pdf = await taxService.buildAccountantPacketPdf(projectId, period);
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader(
+    'Content-Disposition',
+    `attachment; filename="accountant-packet-${period}.pdf"; filename*=UTF-8''${encodeURIComponent(`세무사패킷-${period}.pdf`)}`,
+  );
+  res.status(200).end(pdf);
 }));
 
 router.post('/periods/:period/exports/self-filing-packet', asyncHandler(async (req: AuthRequest, res: Response) => {
-  res.status(200).json(await taxService.buildSelfFilingPacket(req.params.projectId as string, req.params.period as string));
+  const projectId = req.params.projectId as string;
+  const period = req.params.period as string;
+  const csv = await taxService.buildSelfFilingCsv(projectId, period);
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader(
+    'Content-Disposition',
+    `attachment; filename="self-filing-${period}.csv"; filename*=UTF-8''${encodeURIComponent(`직접신고-${period}.csv`)}`,
+  );
+  res.status(200).send(csv);
 }));
 
 router.post('/benchmarks/sroie', asyncHandler(async (_req: AuthRequest, res: Response) => {

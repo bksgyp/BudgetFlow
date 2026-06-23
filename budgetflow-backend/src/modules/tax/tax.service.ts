@@ -2,7 +2,8 @@ import { pool } from '../../config/database';
 import { classify } from './tax.classifier';
 import { generateFindings } from './tax.findings';
 import { calcFeeImpact } from './tax.fee-impact';
-import { buildAccountantPacket, buildSelfFilingPacket } from './tax.exporter';
+import { buildAccountantPacket, buildSelfFilingPacket, buildSelfFilingCsv } from './tax.exporter';
+import { buildAccountantPacketPdf } from './tax.pdf';
 import type { TaxExpenseRow, TaxReadiness, TaxFinding, TaxPeriodSummary, FeeImpact } from './tax.types';
 
 export const taxService = {
@@ -99,6 +100,29 @@ export const taxService = {
       [projectId, period],
     );
     return buildSelfFilingPacket(projectId, period, result.rows as TaxExpenseRow[]);
+  },
+
+  // 세무사 전달 패킷 PDF (Buffer)
+  async buildAccountantPacketPdf(projectId: string, period: string): Promise<Buffer> {
+    const projectResult = await pool.query('SELECT name FROM projects WHERE id=$1', [projectId]);
+    const projectName = projectResult.rows[0]?.name ?? projectId;
+    const result = await pool.query(
+      `SELECT * FROM expenses WHERE project_id=$1
+       AND COALESCE(tax_period, TO_CHAR(date, 'YYYY-MM'))=$2 AND status <> 'rejected' ORDER BY date`,
+      [projectId, period],
+    );
+    const expenses = result.rows as TaxExpenseRow[];
+    return buildAccountantPacketPdf(projectName, period, expenses, generateFindings(expenses), calcFeeImpact());
+  },
+
+  // 직접신고용 CSV (홈택스 신용카드매출전표등 수령명세서 형식)
+  async buildSelfFilingCsv(projectId: string, period: string): Promise<string> {
+    const result = await pool.query(
+      `SELECT * FROM expenses WHERE project_id=$1
+       AND COALESCE(tax_period, TO_CHAR(date, 'YYYY-MM'))=$2 AND status <> 'rejected' ORDER BY date`,
+      [projectId, period],
+    );
+    return buildSelfFilingCsv(result.rows as TaxExpenseRow[]);
   },
 
   async updateTaxReview(expenseId: string, updates: {

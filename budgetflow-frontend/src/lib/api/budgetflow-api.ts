@@ -1383,7 +1383,7 @@ export async function requestAccountantPacketExport(
   if (isTaxApiEnabled) {
     await downloadFile(
       `/api/projects/${projectId}/tax/periods/${period}/exports/accountant-packet`,
-      `accountant-packet-${projectId}-${period}.xlsx`,
+      `accountant-packet-${period}.pdf`,
     );
     return createMockTaxExport(projectId, period, "accountant_packet", false);
   }
@@ -1404,7 +1404,7 @@ export async function requestSelfFilingPacketExport(
   if (isTaxApiEnabled) {
     await downloadFile(
       `/api/projects/${projectId}/tax/periods/${period}/exports/self-filing-packet`,
-      `self-filing-packet-${projectId}-${period}.xlsx`,
+      `self-filing-${period}.csv`,
     );
     return createMockTaxExport(projectId, period, "self_filing_packet", false);
   }

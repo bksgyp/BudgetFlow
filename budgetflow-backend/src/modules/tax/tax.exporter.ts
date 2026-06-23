@@ -80,3 +80,50 @@ export function buildSelfFilingPacket(
     notice: '이 자료는 세무 신고 준비용 참고 자료입니다. 최종 신고는 세무사 또는 홈택스를 통해 진행하세요.',
   };
 }
+
+
+// 직접신고용 CSV — 국세청 '신용카드매출전표등 수령명세서(매입)' 항목 구조에 맞춤.
+// 매입세액 공제용 적격증빙(세금계산서/카드·현금영수증) 명세를 사용자가 홈택스에 옮겨 적거나
+// 업로드 전 검토할 수 있도록 정리한다. 엑셀에서 한글이 깨지지 않도록 UTF-8 BOM + CRLF.
+// 주의: 공급가액/세액은 공제 후보 건에 한해 부가세 10% 가정으로 분리한 '추정치'이며,
+//       사업자등록번호는 우리 데이터에 없어 공란(사용자 보완)으로 둔다.
+const vatClassLabelKo: Record<string, string> = {
+  vat_credit_candidate: '공제대상(추정)',
+  vat_non_credit_candidate: '불공제',
+  exempt_or_zero: '면세/영세',
+  unknown: '확인필요',
+};
+
+export function buildSelfFilingCsv(expenses: TaxExpenseRow[]): string {
+  const ready = expenses.filter(e => e.tax_review_status === 'ready');
+  const header = [
+    '거래일자', '상호(거래처)', '사업자등록번호', '공급가액', '부가세액',
+    '합계(공급대가)', '결제수단', '증빙유형', '공제구분',
+  ];
+  const esc = (v: unknown): string => {
+    const s = v == null ? '' : String(v);
+    return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+
+  const rows = ready.map(e => {
+    const total = Number(e.amount ?? 0);
+    const credit = e.vat_class === 'vat_credit_candidate';
+    // 공제 후보(카드/현금영수증·세금계산서)만 부가세 10% 가정으로 분리
+    const supply = credit ? Math.round(total / 1.1) : total;
+    const vat = credit ? total - supply : 0;
+    return [
+      String(e.date ?? '').slice(0, 10),
+      e.merchant ?? '',
+      '', // 사업자등록번호: 데이터 없음 → 사용자 보완
+      supply,
+      vat,
+      total,
+      e.payment_method ?? '',
+      e.tax_invoice_type ?? '',
+      vatClassLabelKo[e.vat_class ?? 'unknown'] ?? '확인필요',
+    ].map(esc).join(',');
+  });
+
+  // \uFEFF: Excel(특히 한국어 Windows)이 UTF-8로 인식하도록 BOM 추가
+  return '\uFEFF' + [header.join(','), ...rows].join('\r\n') + '\r\n';
+}
