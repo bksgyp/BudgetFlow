@@ -149,7 +149,7 @@ describe("BudgetFlow mock API", () => {
       mappingStatus: "suggested",
     });
     expect(result.mappings.map((mapping) => mapping.targetField)).toEqual(
-      expect.arrayContaining(["date", "amount", "category"]),
+      expect.arrayContaining(["transactionDate", "supplyAmount", "vatAmount"]),
     );
     expect(project).toMatchObject({
       templateFileName: "법인운영비_최종_정산서.xlsx",

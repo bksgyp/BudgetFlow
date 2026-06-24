@@ -77,14 +77,19 @@ export type TaxExportType =
 
 export type TemplateMappingStatus = "none" | "suggested" | "confirmed";
 
+// 세무사 제출용 경비/매입 지출명세서의 표준 컬럼.
+// 거래일자·거래처·사업자등록번호·계정과목·적요·공급가액·부가세액·합계금액·증빙구분·결제수단.
 export type TemplateField =
-  | "date"
-  | "merchant"
-  | "description"
-  | "category"
-  | "amount"
-  | "payerName"
-  | "evidence";
+  | "transactionDate"
+  | "vendorName"
+  | "businessNumber"
+  | "accountTitle"
+  | "summary"
+  | "supplyAmount"
+  | "vatAmount"
+  | "totalAmount"
+  | "evidenceType"
+  | "paymentMethod";
 
 export type Organization = {
   id: string;

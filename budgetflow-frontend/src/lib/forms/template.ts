@@ -3,13 +3,16 @@ import { z } from "zod";
 import type { TemplateField } from "@/lib/domain";
 
 export const templateFieldSchema = z.enum([
-  "date",
-  "merchant",
-  "description",
-  "category",
-  "amount",
-  "payerName",
-  "evidence",
+  "transactionDate",
+  "vendorName",
+  "businessNumber",
+  "accountTitle",
+  "summary",
+  "supplyAmount",
+  "vatAmount",
+  "totalAmount",
+  "evidenceType",
+  "paymentMethod",
 ] satisfies [TemplateField, ...TemplateField[]]);
 
 export const projectTemplateUploadSchema = z.object({
