@@ -98,7 +98,7 @@ async function sendResultMessage(client: any, channel: string, result: any) {
   if (result.action === 'request_re_input') {
     await client.chat.postMessage({
       channel,
-      text: '⚠️ 금액 정보를 찾을 수 없습니다. 다시 입력해주세요.',
+      text: `⚠️ ${result.reviewReason || '금액 정보를 찾을 수 없습니다. 다시 입력해주세요.'}`,
     });
   } else if (result.status === 'needs_review') {
     await client.chat.postMessage({
