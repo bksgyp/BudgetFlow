@@ -466,27 +466,27 @@ function TemplateUploadPanel({
   const visibleMappings = uploadResult?.mappings ?? [
     {
       confirmed: true,
-      confidence: 0.94,
-      sourceColumn: "날짜",
-      targetField: "date" as const,
+      confidence: 0.95,
+      sourceColumn: "거래일자",
+      targetField: "transactionDate" as const,
     },
     {
       confirmed: true,
-      confidence: 0.9,
-      sourceColumn: "사용처",
-      targetField: "merchant" as const,
+      confidence: 0.91,
+      sourceColumn: "거래처",
+      targetField: "vendorName" as const,
     },
     {
       confirmed: false,
-      confidence: 0.88,
-      sourceColumn: "카테고리",
-      targetField: "category" as const,
+      confidence: 0.84,
+      sourceColumn: "공급가액",
+      targetField: "supplyAmount" as const,
     },
     {
       confirmed: false,
-      confidence: 0.76,
-      sourceColumn: "증빙 링크",
-      targetField: "evidence" as const,
+      confidence: 0.8,
+      sourceColumn: "부가세",
+      targetField: "vatAmount" as const,
     },
   ];
 
@@ -717,11 +717,14 @@ function templateMappingStatusLabel(
 }
 
 const templateFieldLabel = {
-  amount: "금액",
-  category: "예산 항목",
-  date: "지출일자",
-  description: "내용",
-  evidence: "첨부자료",
-  merchant: "거래처명",
-  payerName: "결제자",
+  transactionDate: "거래일자",
+  vendorName: "거래처명",
+  businessNumber: "사업자등록번호",
+  accountTitle: "계정과목",
+  summary: "적요",
+  supplyAmount: "공급가액",
+  vatAmount: "부가세액",
+  totalAmount: "합계금액",
+  evidenceType: "증빙구분",
+  paymentMethod: "결제수단",
 } as const;
